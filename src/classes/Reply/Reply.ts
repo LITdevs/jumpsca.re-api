@@ -11,7 +11,7 @@ export default class Reply {
     request: ReplyRequest;
 
     constructor(options : IReplyOptions) {
-        this.request = new ReplyRequest(options.responseCode || 200, options.success || true);
+        this.request = new ReplyRequest(options.responseCode || 200, typeof options.success === "undefined" ? true : options.success);
         this.response = options.response || { message: "OK" }
     }
 }
