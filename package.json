@@ -1,11 +1,12 @@
 {
 	"type": "module",
-	"name": "litidentity",
-	"version": "1.0.0",
-	"description": "LIT Devs identity provider",
+	"name": "jumpsca.re-api",
+	"version": "0.0.1",
+	"description": "jumpsca.re backend",
 	"exports": "./src/index.ts",
-	"repository": "https://github.com/LITdevs/LITidentity",
+	"repository": "https://github.com/LITdevs/jumpsca.re-api",
 	"author": "Emilia",
+	"license": "UNLICENSED",
 	"scripts": {
 		"dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\""
 	},
