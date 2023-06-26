@@ -1,4 +1,4 @@
 {
-	"environment": "dev",
-	"name": "phoenix"
+	"environment": "prod",
+	"name": "jumpsca.re"
 }
