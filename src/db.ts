@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import mongoose from 'mongoose';
 import EventEmitter from "events";
-import testSchema from "./schemas/testSchema.js";
+import addressSchema from "./schemas/addressSchema.js";
 /*import loginUserSchema from './schemas/loginUserSchema.js'
 import userAvatarSchema from './schemas/userAvatarSchema.js'
 import quarkSchema from "./schemas/quarkSchema.js";
@@ -19,7 +19,7 @@ export default class Database {
     db: any;
     events: EventEmitter = new EventEmitter();
 
-    Test;
+    Address;
 
     constructor() {
         if (typeof Database._instance === "object") return Database._instance;
@@ -41,8 +41,8 @@ export default class Database {
     }
 
     #onOpen() {
-        console.log("Database connection established");
-        this.Test = this.db.model('test', testSchema);
+        console.log("Runestone connection established");
+        this.Address = this.db.model('address', addressSchema);
         /*Avatars = lqdb.model('avatar', userAvatarSchema)
         Quarks = lqdb.model('quark', quarkSchema)
         Channels = lqdb.model('channel', channelSchema)

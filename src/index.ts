@@ -65,6 +65,7 @@ app.all("*", async (req, res) => {
     res.reply(new NotFoundReply());
 })
 
+// Make sure both the database and feature gacha are ready before starting listening for requests
 let unleashReady = false;
 let databaseReady = false;
 database.events.once("ready", () => {
@@ -79,7 +80,7 @@ unleash.on('synchronized', () => {
 
 const startServer = () => {
     app.listen(process.env.PORT || 13717, async () => {
-        console.log(`${await database.Test.countDocuments({})} test documents in database`)
+        console.log(`${await database.Address.countDocuments({})} address documents in Runestone`)
         console.log(`Listening on port ${process.env.PORT || 13717}`);
     });
 }
