@@ -8,10 +8,9 @@ const database = new Database();
 router.get("/", async (req, res) => {
     res.reply(new Reply({
         response: {
-            message: "OK",
-            version: req.app.locals.pjson.version,
-            env: req.app.locals.ejson
-        }}));
+            message: "Hello world"
+        }
+    }));
 })
 
 

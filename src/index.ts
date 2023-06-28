@@ -4,7 +4,22 @@ import express from 'express';
 import fs from "fs";
 import NotFoundReply from "./classes/Reply/NotFoundReply.js";
 import Database from "./db.js";
+import FeatureFlag from "./util/middleware/FeatureFlagMiddleware.js";
+import Reply from "./classes/Reply/Reply.js";
 import { initialize } from 'unleash-client';
+import Stripe from "stripe";
+
+const stripeKey = process.env.STRIPE_KEY;
+const stripeWebhookKey = process.env.STRIPE_WEBHOOK_SECRET;
+if (!stripeKey) throw new Error("STRIPE_KEY not found in environment variables");
+if (!stripeWebhookKey) throw new Error("STRIPE_WEBHOOK_SECRET not found in environment variables");
+
+// Sort of an odd export, mainly to get typescript to believe it cannot be undefined
+export const stripeWebhook = stripeWebhookKey;
+
+export const stripe = new Stripe(stripeKey, {
+    apiVersion: '2022-11-15',
+});
 
 const pjson = JSON.parse(fs.readFileSync("package.json").toString());
 const ejson = JSON.parse(fs.readFileSync("environment.json").toString());
@@ -24,7 +39,14 @@ export const unleash = initialize({
 });
 
 // Set up body parsers
-app.use(express.json())
+// Stripe webhook needs raw body, so we need to use raw body parser for that
+app.use((req, res, next) => {
+    if (req.path === "/v1/address/checkout/fulfill") {
+        express.raw({type: 'application/json'})(req, res, next);
+    } else {
+        express.json()(req, res, next);
+    }
+})
 
 // Set up custom middleware
 app.use((req, res, next) => {
@@ -56,9 +78,11 @@ app.locals.ejson = ejson;
 
 // Set up routes
 import v1_home from "./routes/v1/home.js";
-import FeatureFlag from "./util/FeatureFlagMiddleware.js";
-import Reply from "./classes/Reply/Reply.js";
+import v1_address from "./routes/v1/address.js";
+import v1_user from "./routes/v1/user.js";
 app.use("/v1", v1_home);
+app.use("/v1/address", v1_address);
+app.use("/v1/user", v1_user);
 
 // Catch all other requests with 404
 app.all("*", async (req, res) => {
@@ -70,17 +94,19 @@ let unleashReady = false;
 let databaseReady = false;
 database.events.once("ready", () => {
     databaseReady = true;
-    if (unleashReady) startServer();
+    startServer();
 });
 
 unleash.on('synchronized', () => {
+    console.debug("Feature gacha rolled")
     unleashReady = true;
-    if (databaseReady) startServer();
+    startServer();
 });
 
 const startServer = () => {
-    app.listen(process.env.PORT || 13717, async () => {
+    if (!databaseReady || !unleashReady) return;
+    app.listen(process.env.PORT || 18665, async () => {
         console.log(`${await database.Address.countDocuments({})} address documents in Runestone`)
-        console.log(`Listening on port ${process.env.PORT || 13717}`);
+        console.log(`Listening on port ${process.env.PORT || 18665}`);
     });
 }

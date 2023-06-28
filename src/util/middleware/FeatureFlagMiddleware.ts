@@ -1,5 +1,5 @@
-import {unleash} from "../index.js";
-import ForbiddenReply from "../classes/Reply/ForbiddenReply.js";
+import {unleash} from "../../index.js";
+import ForbiddenReply from "../../classes/Reply/ForbiddenReply.js";
 
 export default function FeatureFlag (flagName : string) {
     return function (req, res, next) {

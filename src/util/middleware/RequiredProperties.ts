@@ -1,5 +1,5 @@
-import Reply from "../classes/Reply/Reply.js";
-import BadRequestReply from "../classes/Reply/BadRequestReply.js";
+import Reply from "../../classes/Reply/Reply.js";
+import BadRequestReply from "../../classes/Reply/BadRequestReply.js";
 
 interface IRequiredProperty {
     property: string,

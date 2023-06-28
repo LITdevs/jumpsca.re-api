@@ -25,6 +25,8 @@ let blacklist : string[] = [
     "no-reply"
 ]
 
+export const subdomainRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
 const schema : mongoose.Schema = new mongoose.Schema({
     name: {
         type: String,
@@ -36,7 +38,7 @@ const schema : mongoose.Schema = new mongoose.Schema({
                 // check if the name is blacklisted
                 if (blacklist.includes(v.toLowerCase())) return false;
                 // check if the name is a valid subdomain
-                return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(url.domainToASCII(v.toLowerCase()));
+                return subdomainRegex.test(url.domainToASCII(v.toLowerCase()));
             }
         }
     },
@@ -52,3 +54,4 @@ const schema : mongoose.Schema = new mongoose.Schema({
 });
 
 export default schema;
+export {blacklist};
