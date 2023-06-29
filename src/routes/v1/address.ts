@@ -249,6 +249,12 @@ router.get("/:address", async (req, res) => {
     // This is apparently a feature, so here is a workaround:
     // Check if the address as a number is NaN, if it is not skip punycode conversion
     /*if (isNaN(Number(req.params.address))) */req.params.address = tr46.toASCII(req.params.address.trim().toLowerCase(), { processingOption: "transitional" })/*url.domainToASCII(req.params.address.trim());*/
+    // ok all the comments before this are essentially a lie
+    // I ended up going through like 4 libraries that do this, and then finally discovered tr46 (actually i found https://github.com/jcranmer/idna-uts46/ first)
+    // This one finally does what I want (can handle emotes that consist of emotes, like 🐈‍⬛ or 🏳️‍⚧️)
+    // And it doesn't parse domains into ipv4 addresses, so I was able to remove the check for that
+    // I now know far more about the mess that is punycode than I ever wanted to
+    // HOURS_WASTED = 3
     let addressAvailability : IAvailabilityResponse = await isAvailable(req.params.address);
     let available = (!addressAvailability.reserved && !addressAvailability.invalid && !addressAvailability.address);
     if (addressAvailability.address === false) return res.reply(new NotFoundReply({ message: "Address not registered", name: req.params.address, available, invalid: addressAvailability.invalid }, true));
