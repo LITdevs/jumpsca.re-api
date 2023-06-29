@@ -25,7 +25,7 @@ let blacklist : string[] = [
     "no-reply"
 ]
 
-export const subdomainRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+export const subdomainRegex = /^[a-z0-9]+(?:-+[a-z0-9]+)*$/
 
 const schema : mongoose.Schema = new mongoose.Schema({
     name: {

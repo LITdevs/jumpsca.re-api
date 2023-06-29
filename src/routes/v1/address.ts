@@ -8,6 +8,7 @@ import BadRequestReply from "../../classes/Reply/BadRequestReply.js";
 import {stripe, stripeWebhook} from "../../index.js";
 import {Types} from "mongoose";
 import {emailRegex} from "../../schemas/userSchema.js";
+import tr46 from "tr46";
 
 const router = express.Router();
 
@@ -243,13 +244,22 @@ router.post("/renew/:address", RequiredProperties([
 })
 
 router.get("/:address", async (req, res) => {
+    // This is the most ridiculous if statement
+    // Basically url.domainToASCII turns numbers into ipv4 addresses https://github.com/nodejs/node/issues/41343
+    // This is apparently a feature, so here is a workaround:
+    // Check if the address as a number is NaN, if it is not skip punycode conversion
+    /*if (isNaN(Number(req.params.address))) */req.params.address = tr46.toASCII(req.params.address.trim().toLowerCase(), { processingOption: "transitional" })/*url.domainToASCII(req.params.address.trim());*/
     let addressAvailability : IAvailabilityResponse = await isAvailable(req.params.address);
-    if (addressAvailability.address === false) return res.reply(new NotFoundReply("Address not registered"));
+    let available = (!addressAvailability.reserved && !addressAvailability.invalid && !addressAvailability.address);
+    if (addressAvailability.address === false) return res.reply(new NotFoundReply({ message: "Address not registered", name: req.params.address, available, invalid: addressAvailability.invalid }, true));
     res.reply(new Reply({
         response: {
             message: "Address found",
+            name: req.params.address,
             address: addressAvailability.address,
-            reserved: addressAvailability.reserved
+            reserved: addressAvailability.reserved,
+            invalid: addressAvailability.invalid,
+            available: available
         }
     }));
 })

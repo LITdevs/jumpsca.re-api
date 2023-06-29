@@ -1,10 +1,11 @@
-import {blacklist} from "../schemas/addressSchema.js";
+import {blacklist, subdomainRegex} from "../schemas/addressSchema.js";
 import ObjectIdToDate from "./ObjectIdToDate.js";
 import Database from "../db.js";
 
 export interface  IAvailabilityResponse {
-    address: any,
+    address: any
     reserved?: boolean
+    invalid?: boolean
 }
 
 const database = new Database();
@@ -24,6 +25,13 @@ export default async function (name : string) : Promise<IAvailabilityResponse> {
            },
            reserved: true
         }
+    }
+
+    // Make sure it is valid
+    console.log(name)
+    if (!subdomainRegex.test(name)) return {
+        address: false,
+        invalid: true
     }
 
     // Find address
