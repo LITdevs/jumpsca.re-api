@@ -9,6 +9,7 @@ import {stripe, stripeWebhook} from "../../index.js";
 import {Types} from "mongoose";
 import {emailRegex} from "../../schemas/userSchema.js";
 import tr46 from "tr46";
+import ServerErrorReply from "../../classes/Reply/ServerErrorReply.js";
 
 const router = express.Router();
 
@@ -83,7 +84,7 @@ router.post("/checkout/fulfill", async (req, res) => {
                     console.log("product", product)
 
                     // If the address already exists, update the expiration date
-                    let existingAddress = await database.Address.findOne({name: product.metadata.address})
+                    let existingAddress = await database.Address.findOne({name: tr46.toASCII(product.metadata.address, {processingOption: "transitional"})})
                     if (existingAddress) {
                         console.log("Address already exists, updating expiration date")
                         existingAddress.expiresAt = new Date(existingAddress.expiresAt.getTime() + purchasedAddress.quantity * 365 * 24 * 60 * 60 * 1000);
@@ -100,7 +101,7 @@ router.post("/checkout/fulfill", async (req, res) => {
 
                     const addressExpiration = purchasedAddress.quantity * 365 * 24 * 60 * 60 * 1000;
                     let address = new database.Address({
-                        name: product.metadata.address,
+                        name: tr46.toASCII(product.metadata.address, {processingOption: "transitional"}),
                         owner,
                         expiresAt: new Date(Date.now() + addressExpiration)
                     })
@@ -143,6 +144,69 @@ router.post("/checkout/fulfill", async (req, res) => {
     }
 })
 
+router.get("/checkout/session", async (req, res) => {
+    if (!req.query.session) return res.reply(new BadRequestReply("Specify session in query"))
+    if (req.query.session.length > 66) return res.reply(new BadRequestReply("Session ID must be at most 66 characters"))
+    let session
+    try {
+        session = await stripe.checkout.sessions.retrieve(req.query.session, {
+            expand: ['line_items'],
+        });
+    } catch (e : any) {
+        if (e.message.startsWith("No such checkout.session")) {
+            return res.reply(new NotFoundReply("Session not found"))
+        }
+        console.error(e)
+        return res.reply(new ServerErrorReply("Failed to fetch session"))
+    }
+    if (!session) return res.reply(new NotFoundReply());
+
+    try {
+        const lineItems = session.line_items;
+        if (!lineItems) return
+        for (const lineItem of lineItems.data) {
+            if (!lineItem.price?.product) {
+                console.error(`No product associated with line item? Line item ID ${lineItem.id}`)
+                return res.reply(new ServerErrorReply("ERR_NO_PROD: Product missing from line item"))
+            }
+            if (!lineItem?.quantity) {
+                console.error(`No quantity associated with line item? Line item ID ${lineItem.id}`)
+                return res.reply(new ServerErrorReply("ERR_NO_QTY: Quantity missing from line item"))
+            }
+            // TODO: expand the type or whatever
+            (lineItem as any).product = await stripe.products.retrieve(lineItem.price.product as string)
+        }
+        return res.reply(new Reply({
+            response: {
+                message: "Session found",
+                session: {
+                    lineItems: lineItems.data.map((lineItem : any) => {
+                        return {
+                            address: lineItem.product.metadata.address,
+                            renewal: !!lineItem.product.metadata.renewal,
+                            quantity: lineItem.quantity,
+                            total: lineItem.amount_total,
+                            subtotal: lineItem.amount_subtotal,
+                            tax: lineItem.amount_tax
+                        }
+                    }),
+                    total: session.amount_total,
+                    subtotal: session.amount_subtotal,
+                    tax: session.total_details?.amount_tax,
+                    discount: session.total_details?.amount_discount,
+                    currency: session.currency
+                }
+            }
+        }))
+    } catch (e)
+    {
+        console.error(e);
+        // TODO: If this causes issues... i have no idea, i dont think refunding here makes sense
+        return new ServerErrorReply();
+    }
+
+})
+
 router.post("/checkout/:address", RequiredProperties([
     {
         property: "email",
@@ -150,7 +214,7 @@ router.post("/checkout/:address", RequiredProperties([
         regex: emailRegex
     }
 ]), async (req, res) => {
-    let addressAvailability : IAvailabilityResponse = await isAvailable(req.params.address);
+    let addressAvailability : IAvailabilityResponse = await isAvailable(tr46.toASCII(req.params.address, { processingOption: "transitional" }));
     if (addressAvailability.address !== false) return res.reply(new BadRequestReply("Address already registered"));
 
     const stripeSession = await stripe.checkout.sessions.create({
@@ -158,7 +222,7 @@ router.post("/checkout/:address", RequiredProperties([
             {
                 price_data: {
                     currency: "eur",
-                    unit_amount: 100,
+                    unit_amount: 200,
                     product_data: {
                         name: `${req.params.address}.jumpsca.re`,
                         metadata: {
@@ -178,7 +242,7 @@ router.post("/checkout/:address", RequiredProperties([
         automatic_tax: {
             enabled: true
         },
-        success_url: "https://jumpsca.re/checkout/success",
+        success_url: "https://jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}",
         cancel_url: "https://jumpsca.re/checkout/cancel",
         mode: "payment"
     })
@@ -211,11 +275,12 @@ router.post("/renew/:address", RequiredProperties([
             {
                 price_data: {
                     currency: "eur",
-                    unit_amount: 100,
+                    unit_amount: 200,
                     product_data: {
                         name: `${req.params.address}.jumpsca.re Renewal for ${req.body.years} years`,
                         metadata: {
-                            address: req.params.address
+                            address: req.params.address,
+                            renewal: "yes"
                         }
                     }
                 },
@@ -231,7 +296,7 @@ router.post("/renew/:address", RequiredProperties([
         automatic_tax: {
             enabled: true
         },
-        success_url: "https://jumpsca.re/renewal/success",
+        success_url: "https://jumpsca.re/renewal/success?session={CHECKOUT_SESSION_ID}",
         cancel_url: "https://jumpsca.re/renewal/cancel",
         mode: "payment"
     })
