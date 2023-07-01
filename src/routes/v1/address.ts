@@ -212,46 +212,61 @@ router.post("/checkout/:address", RequiredProperties([
         property: "email",
         type: "string",
         regex: emailRegex
+    },
+    {
+        property: "years",
+        type: "number",
+        min: 1,
+        max: 10,
+        optional: true
     }
 ]), async (req, res) => {
     let addressAvailability : IAvailabilityResponse = await isAvailable(tr46.toASCII(req.params.address, { processingOption: "transitional" }));
     if (addressAvailability.address !== false) return res.reply(new BadRequestReply("Address already registered"));
+    try {
 
-    const stripeSession = await stripe.checkout.sessions.create({
-        line_items: [
-            {
-                price_data: {
-                    currency: "eur",
-                    unit_amount: 200,
-                    product_data: {
-                        name: `${req.params.address}.jumpsca.re`,
-                        metadata: {
-                            address: req.params.address
+        const stripeSession = await stripe.checkout.sessions.create({
+            line_items: [
+                {
+                    price_data: {
+                        currency: "eur",
+                        unit_amount: 200,
+                        product_data: {
+                            name: `${req.params.address}.jumpsca.re`,
+                            metadata: {
+                                address: req.params.address
+                            }
                         }
+                    },
+                    quantity: req.body.years || 1,
+                    adjustable_quantity: {
+                        enabled: true,
+                        minimum: 1,
+                        maximum: 10
                     }
-                },
-                quantity: req.body.years || 1,
-                adjustable_quantity: {
-                    enabled: true,
-                    minimum: 1,
-                    maximum: 10
                 }
+            ],
+            customer_email: req.body.email,
+            automatic_tax: {
+                enabled: true
+            },
+            success_url: "https://jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}",
+            //success_url: "http://localhost:3000/checkout/success?session={CHECKOUT_SESSION_ID}",
+            cancel_url: "https://jumpsca.re/checkout/cancel",
+            mode: "payment"
+        })
+        res.reply(new Reply({
+            response: {
+                message: "Stripe session created",
+                redirect: stripeSession.url
             }
-        ],
-        customer_email: req.body.email,
-        automatic_tax: {
-            enabled: true
-        },
-        success_url: "https://jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}",
-        cancel_url: "https://jumpsca.re/checkout/cancel",
-        mode: "payment"
-    })
-    res.reply(new Reply({
-        response: {
-            message: "Stripe session created",
-            redirect: stripeSession.url
+        }))
+    } catch (e : any) {
+        if (e?.raw?.statusCode === 400) {
+            return res.reply(new BadRequestReply(e.code))
         }
-    }))
+        return res.reply(new ServerErrorReply("Failed to create Stripe session"))
+    }
 })
 
 router.post("/renew/:address", RequiredProperties([
@@ -267,45 +282,52 @@ router.post("/renew/:address", RequiredProperties([
     req.user = {}
     req.user.email = "emilia@jumpsca.re"
 
-    let address = await database.Address.findOne({name: req.params.address});
-    if (!address) return res.reply(new NotFoundReply("Address not found"));
+    try {
+        let address = await database.Address.findOne({name: req.params.address});
+        if (!address) return res.reply(new NotFoundReply("Address not found"));
 
-    const stripeSession = await stripe.checkout.sessions.create({
-        line_items: [
-            {
-                price_data: {
-                    currency: "eur",
-                    unit_amount: 200,
-                    product_data: {
-                        name: `${req.params.address}.jumpsca.re Renewal for ${req.body.years} years`,
-                        metadata: {
-                            address: req.params.address,
-                            renewal: "yes"
+        const stripeSession = await stripe.checkout.sessions.create({
+            line_items: [
+                {
+                    price_data: {
+                        currency: "eur",
+                        unit_amount: 200,
+                        product_data: {
+                            name: `${req.params.address}.jumpsca.re Renewal for ${req.body.years} years`,
+                            metadata: {
+                                address: req.params.address,
+                                renewal: "yes"
+                            }
                         }
+                    },
+                    quantity: req.body.years,
+                    adjustable_quantity: {
+                        enabled: true,
+                        minimum: 1,
+                        maximum: 10
                     }
-                },
-                quantity: req.body.years,
-                adjustable_quantity: {
-                    enabled: true,
-                    minimum: 1,
-                    maximum: 10
                 }
+            ],
+            customer_email: req.user.email,
+            automatic_tax: {
+                enabled: true
+            },
+            success_url: "https://jumpsca.re/renewal/success?session={CHECKOUT_SESSION_ID}",
+            cancel_url: "https://jumpsca.re/renewal/cancel",
+            mode: "payment"
+        })
+        res.reply(new Reply({
+            response: {
+                message: "Stripe session created",
+                redirect: stripeSession.url
             }
-        ],
-        customer_email: req.user.email,
-        automatic_tax: {
-            enabled: true
-        },
-        success_url: "https://jumpsca.re/renewal/success?session={CHECKOUT_SESSION_ID}",
-        cancel_url: "https://jumpsca.re/renewal/cancel",
-        mode: "payment"
-    })
-    res.reply(new Reply({
-        response: {
-            message: "Stripe session created",
-            redirect: stripeSession.url
+        }))
+    } catch (e : any) {
+        if (e?.raw?.statusCode === 400) {
+            return res.reply(new BadRequestReply(e.code))
         }
-    }))
+        return res.reply(new ServerErrorReply("Failed to create Stripe session"))
+    }
 })
 
 router.get("/:address", async (req, res) => {
