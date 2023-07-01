@@ -80,9 +80,21 @@ app.locals.ejson = ejson;
 import v1_home from "./routes/v1/home.js";
 import v1_address from "./routes/v1/address.js";
 import v1_user from "./routes/v1/user.js";
+import Email from "./classes/Email/Email.js";
 app.use("/v1", v1_home);
 app.use("/v1/address", v1_address);
 app.use("/v1/user", v1_user);
+
+/*app.post("/testemail", async (req, res) => {
+    // constructor(subject, recipientAddress, recipientDisplayName, bodyPlain, bodyHTML) {
+    const email = new Email(req.body.subject, req.body.recipientAddress, req.body.recipientDisplayName, req.body.bodyPlain, req.body.bodyHTML)
+    res.reply(new Reply({
+        response: {
+            message: "Sent",
+            info: await email.send()
+        }
+    }))
+})*/
 
 // Catch all other requests with 404
 app.all("*", async (req, res) => {
