@@ -46,12 +46,12 @@ export default class Token {
         return await database.Token.deleteOne({$or: [{refresh: this.token}, {access: this.token}]});
     }
 
-    async isActive() : Promise<boolean> {
+    async isActive() : Promise<any> {
         const database = new Database();
-        let tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]});
+        let tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]}).populate("user");
         if (!tokenDocument) return false;
-        if (this.type === "refresh") return true;
-        return this.expired;
+        if (this.type === "refresh") return tokenDocument;
+        return !this.expired ? tokenDocument : false;
     }
 
     /**
