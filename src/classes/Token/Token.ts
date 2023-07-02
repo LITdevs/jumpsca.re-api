@@ -33,7 +33,6 @@ export default class Token {
     }
 
     get expired() : boolean {
-        // TODO: Do not trust this! It does not check database
         if (this.type === "refresh") return true;
         return Date.now() > this.expiresAt.getTime()
     }
@@ -45,6 +44,14 @@ export default class Token {
     async invalidate() {
         const database = new Database();
         return await database.Token.deleteOne({$or: [{refresh: this.token}, {access: this.token}]});
+    }
+
+    async isActive() : Promise<boolean> {
+        const database = new Database();
+        let tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]});
+        if (!tokenDocument) return false;
+        if (this.type === "refresh") return true;
+        return this.expired;
     }
 
     /**
