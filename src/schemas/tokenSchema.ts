@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import url from 'node:url';
+import Token from "../classes/Token/Token.js";
 
 const schema : mongoose.Schema = new mongoose.Schema({
     access: {
@@ -7,9 +8,14 @@ const schema : mongoose.Schema = new mongoose.Schema({
         required: true,
         unique: true,
         validate: {
-            message: props => `${props.value} is not a valid subdomain`,
+            message: props => `${props.value} is not a valid token`,
             validator: function(v) {
-                return true;
+                try {
+                    Token.parse(v)
+                    return true
+                } catch (e) {
+                    return false
+                }
             }
         }
     },
@@ -18,19 +24,20 @@ const schema : mongoose.Schema = new mongoose.Schema({
         required: true,
         unique: true,
         validate: {
-            message: props => `${props.value} is not a valid subdomain`,
+            message: props => `${props.value} is not a valid token`,
             validator: function(v) {
-                return true;
+                try {
+                    Token.parse(v)
+                    return true
+                } catch (e) {
+                    return false
+                }
             }
         }
     },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user",
-        required: true
-    },
-    expiresAt: {
-        type: Date,
         required: true
     }
 });

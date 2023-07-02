@@ -4,8 +4,6 @@
 import * as crypto from "crypto";
 import Database from "../../db.js";
 
-const database = new Database();
-
 export default class Token {
     token: string;
     type: "access"|"refresh";
@@ -45,6 +43,7 @@ export default class Token {
      * @returns {Promise<any>}
      */
     async invalidate() {
+        const database = new Database();
         return await database.Token.deleteOne({$or: [{refresh: this.token}, {access: this.token}]});
     }
 

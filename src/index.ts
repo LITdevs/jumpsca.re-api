@@ -81,9 +81,28 @@ import v1_home from "./routes/v1/home.js";
 import v1_address from "./routes/v1/address.js";
 import v1_user from "./routes/v1/user.js";
 import Email from "./classes/Email/Email.js";
+import RefreshToken from "./classes/Token/RefreshToken.js";
+import AccessToken from "./classes/Token/AccessToken.js";
+import Token from "./classes/Token/Token.js";
+import ServerErrorReply from "./classes/Reply/ServerErrorReply.js";
 app.use("/v1", v1_home);
 app.use("/v1/address", v1_address);
 app.use("/v1/user", v1_user);
+
+/*app.get("/token", async (req, res) => {
+    try {
+        res.reply(new Reply({
+            response: {
+                message: "Token",
+                newToken: `Token: ${req?.query?.type === "refresh" ? new RefreshToken() : new AccessToken(new Date(Date.now() + 1000 * 60 * 60))}`,
+                oldToken: req?.query?.token && Token.parse(req.query.token),
+                fromToken: req?.query?.token && Token.from(req.query.token),
+            }
+        }))
+    } catch (e : any) {
+        res.reply(new ServerErrorReply({message: e.message}))
+    }
+})*/
 
 /*app.post("/testemail", async (req, res) => {
     // constructor(subject, recipientAddress, recipientDisplayName, bodyPlain, bodyHTML) {
