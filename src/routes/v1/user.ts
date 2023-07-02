@@ -2,8 +2,15 @@ import express from 'express';
 import Reply from "../../classes/Reply/Reply.js";
 import Database from "../../db.js";
 import RequiredProperties from "../../util/middleware/RequiredProperties.js";
-import {encryptPassword} from "../../util/Password.js";
+import {checkPassword, encryptPassword} from "../../util/Password.js";
 import {emailRegex} from "../../schemas/userSchema.js";
+import BadRequestReply from "../../classes/Reply/BadRequestReply.js";
+import AccessToken from "../../classes/Token/AccessToken.js";
+import RefreshToken from "../../classes/Token/RefreshToken.js";
+import Auth from "../../util/middleware/Auth.js";
+import UnauthorizedReply from "../../classes/Reply/UnauthorizedReply.js";
+import Token from "../../classes/Token/Token.js";
+import ServerErrorReply from "../../classes/Reply/ServerErrorReply.js";
 const router = express.Router();
 
 const database = new Database();
@@ -13,9 +20,93 @@ const database = new Database();
 // *The list of special characters could be improved
 export const passwordRegex = /^(?=.*[A-Z].*[A-Z])(?=.*[!@#$%^&*()\-_+.§½?\\\/])(?=.*[0-9].*[0-9])(?=.*[a-z].*[a-z].*[a-z]).{8,}$/
 
-router.get("/", async (req, res) => {
-    res.reply(new Reply({}))
+router.post("/login/password", RequiredProperties([
+    {
+        property: "email",
+        type: "string",
+        regex: emailRegex
+    },
+    {
+        property: "password",
+        type: "string"
+    }
+]), async (req, res) => {
+    let user = await database.User.findOne({email: req.body.email.trim()})
+    if (!user) return res.reply(new BadRequestReply("Invalid email and password combination."))
+    if (!user.hashedPassword || !user.salt) return res.reply(new BadRequestReply("Invalid login method, try using magic link."))
+    if (!checkPassword(req.body.password, user.hashedPassword, user.salt)) return res.reply(new BadRequestReply("Invalid email and password combination."))
+
+    // Congratulations! The password is correct.
+    let token = new database.Token({
+        access: new AccessToken(new Date(Date.now() + 1000 * 60 * 60 * 8)), // 8 hours
+        refresh: new RefreshToken(),
+        user: user._id
+    })
+    await token.save();
+
+    res.reply(new Reply({ response: {
+            message: "Logged in",
+            accessToken: token.access,
+            refreshToken: token.refresh,
+            expiresInSec: 28800 // 8 hours in seconds
+        }}))
 })
 
+router.post("/login/refresh", RequiredProperties([
+    {
+        property: "accessToken",
+        type: "string"
+    },
+    {
+        property: "refreshToken",
+        type: "string"
+    }
+]), async (req, res) => {
+    try {
+        let accessToken = Token.from(req.body.accessToken);
+        let refreshToken = Token.from(req.body.refreshToken);
+        if (accessToken.type !== "access") return res.reply(new BadRequestReply("accessToken is not access token"))
+        if (refreshToken.type !== "refresh") return res.reply(new BadRequestReply("refreshToken is not refresh token"))
+
+        let dToken = await refreshToken.isActive(); // This returns either token document or false
+        if (!dToken) return res.reply(new UnauthorizedReply("Invalid token"))
+
+        if (dToken.refresh !== refreshToken.token) return res.reply(new UnauthorizedReply("Invalid token"))
+        if (dToken.access !== accessToken.token) return res.reply(new UnauthorizedReply("Invalid token"))
+
+        dToken.access = new AccessToken(new Date(Date.now() + 1000*60*60*8)); // Generate a new access token for 8 hours
+        await dToken.save();
+        return res.reply(new Reply({
+            response: {
+                message: "Token refreshed",
+                accessToken: dToken.access,
+                expiresInSec: 28800
+            }
+        }))
+
+    } catch (e : any) {
+        if (e.message.startsWith("Invalid token:")) return res.reply(new BadRequestReply(e.message))
+        console.error(e)
+        return res.reply(new ServerErrorReply(e))
+    }
+})
+
+/*router.post("/icanhasauth", Auth, async (req, res) => {
+    return res.reply(new Reply({response: {
+            email: req.user.email,
+            email2: res.locals.user.email
+        }}))
+})*/
+
+/*router.post("/icanhaspassword", async (req, res) => {
+    let user = await database.User.findOne({email: req.body.email.trim()})
+    let hashes = encryptPassword(req.body.password);
+    user.hashedPassword = hashes.hashedPassword;
+    user.salt = hashes.salt;
+    await user.save();
+    return res.reply(new Reply({}))
+})
+I needed to set a password before it was implemented, lol
+*/
 
 export default router;
