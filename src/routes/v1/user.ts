@@ -11,6 +11,9 @@ import Auth from "../../util/middleware/Auth.js";
 import UnauthorizedReply from "../../classes/Reply/UnauthorizedReply.js";
 import Token from "../../classes/Token/Token.js";
 import ServerErrorReply from "../../classes/Reply/ServerErrorReply.js";
+import Email from "../../classes/Email/Email.js";
+import * as crypto from "crypto";
+import ObjectIdToDate from "../../util/ObjectIdToDate.js";
 const router = express.Router();
 
 const database = new Database();
@@ -81,6 +84,68 @@ router.post("/login/password", RequiredProperties([
             refreshToken: token.refresh,
             expiresInSec: 28800 // 8 hours in seconds
         }}))
+})
+
+router.post("/login/email", RequiredProperties([
+    {
+        property: "email",
+        type: "string",
+        regex: emailRegex
+    },
+    {
+        property: "code",
+        type: "string",
+        minLength: 8,
+        maxLength: 8,
+        trim: true,
+        optional: true
+    }
+]), async (req, res) => {
+    if (req.body.code) {
+        let dCode = await database.LoginCode.findOne({code: req.body.code}).populate("user");
+        if (!dCode || dCode.user.email !== req.body.email) return res.reply(new UnauthorizedReply("No such code"));
+        if (ObjectIdToDate(dCode._id).getTime() + 15*60*1000 < Date.now()) return res.reply(new UnauthorizedReply("Expired code"));
+
+        let token = new database.Token({
+            access: new AccessToken(new Date(Date.now() + 1000 * 60 * 60 * 8)), // 8 hours
+            refresh: new RefreshToken(),
+            user: dCode.user._id
+        })
+        await token.save();
+
+        res.reply(new Reply({ response: {
+                message: "Logged in",
+                accessToken: token.access,
+                refreshToken: token.refresh,
+                expiresInSec: 28800 // 8 hours in seconds
+            }}))
+
+        await database.LoginCode.deleteOne({_id: dCode._id});
+
+    } else {
+        let user = await database.User.findOne({email: req.body.email})
+        if (!user) return res.reply(new UnauthorizedReply("No such user"));
+        let code = crypto.randomBytes(4).toString("hex");
+        let email = new Email(
+            "jumpsca.re login code",
+            user.email,
+            user.displayName,
+            code,
+            `<b>${code}</b>`
+        )
+        let loginCode = new database.LoginCode({
+            user: user._id,
+            code: code
+        })
+        await loginCode.save();
+        await email.send();
+        return res.reply(new Reply({
+            response: {
+                message: "Email sent",
+                expiresInSec: 60*15
+            }
+        }))
+    }
 })
 
 router.post("/login/refresh", RequiredProperties([

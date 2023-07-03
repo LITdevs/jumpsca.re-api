@@ -5,6 +5,7 @@ import EventEmitter from "events";
 import addressSchema from "./schemas/addressSchema.js";
 import userSchema from "./schemas/userSchema.js";
 import tokenSchema from "./schemas/tokenSchema.js";
+import loginCodeSchema from "./schemas/loginCodeSchema.js";
 /*import loginUserSchema from './schemas/loginUserSchema.js'
 import userAvatarSchema from './schemas/userAvatarSchema.js'
 import quarkSchema from "./schemas/quarkSchema.js";
@@ -24,6 +25,7 @@ export default class Database {
     Address;
     User;
     Token;
+    LoginCode;
 
     constructor() {
         if (typeof Database._instance === "object") return Database._instance;
@@ -49,6 +51,7 @@ export default class Database {
         this.Address = this.db.model('address', addressSchema);
         this.User = this.db.model('user', userSchema);
         this.Token = this.db.model('token', tokenSchema);
+        this.LoginCode = this.db.model('logincode', loginCodeSchema);
         /*Avatars = lqdb.model('avatar', userAvatarSchema)
         Quarks = lqdb.model('quark', quarkSchema)
         Channels = lqdb.model('channel', channelSchema)
