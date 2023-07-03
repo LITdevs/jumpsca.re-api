@@ -28,6 +28,7 @@ export default async function Auth(req, res, next) {
         if (!dToken) return res.reply(new UnauthorizedReply("Invalid token"))
         res.locals.user = dToken.user;
         req.user = dToken.user;
+        res.locals.dToken = dToken
         //res.reply(new Reply({response: dToken}))
         next();
 

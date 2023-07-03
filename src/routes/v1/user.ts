@@ -20,6 +20,37 @@ const database = new Database();
 // *The list of special characters could be improved
 export const passwordRegex = /^(?=.*[A-Z].*[A-Z])(?=.*[!@#$%^&*()\-_+.§½?\\\/])(?=.*[0-9].*[0-9])(?=.*[a-z].*[a-z].*[a-z]).{8,}$/
 
+router.put("/login/password", Auth, RequiredProperties([
+    {
+        property: "password",
+        type: "string",
+        regex: passwordRegex
+    },
+    {
+        property: "invalidateSessions",
+        type: "boolean",
+        optional: true
+    },
+    {
+        property: "invalidateThisSession",
+        type: "boolean",
+        optional: true
+    }
+]), async (req, res) => {
+    let hashes = encryptPassword(req.body.password);
+    req.user.hashedPassword = hashes.hashedPassword;
+    req.user.salt = hashes.salt;
+    await req.user.save();
+    if (req.body.invalidateSessions) {
+        await database.Token.deleteMany({user: req.user._id, access: {$not: !req.body.invalidateThisSession ? new RegExp(res.locals.dToken.access) : / /}});
+    }
+    res.reply(new Reply({
+        response: {
+            message: "Password set."
+        }
+    }))
+})
+
 router.post("/login/password", RequiredProperties([
     {
         property: "email",
