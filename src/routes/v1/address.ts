@@ -10,6 +10,7 @@ import {Types} from "mongoose";
 import {emailRegex} from "../../schemas/userSchema.js";
 import tr46 from "tr46";
 import ServerErrorReply from "../../classes/Reply/ServerErrorReply.js";
+import Auth from "../../util/middleware/Auth.js";
 
 const router = express.Router();
 
@@ -269,21 +270,17 @@ router.post("/checkout/:address", RequiredProperties([
     }
 })
 
-router.post("/renew/:address", RequiredProperties([
+router.post("/renew/:address", Auth, RequiredProperties([
     {
         property: "years",
         type: "number",
         min: 1,
         max: 10
     }
-]),/* Auth, */ async (req, res) => {
-
-    // TODO: Verify that the address is owned by the user
-    req.user = {}
-    req.user.email = "emilia@jumpsca.re"
+]), async (req, res) => {
 
     try {
-        let address = await database.Address.findOne({name: req.params.address});
+        let address = await database.Address.findOne({name: req.params.address, owner: req.user._id});
         if (!address) return res.reply(new NotFoundReply("Address not found"));
 
         const stripeSession = await stripe.checkout.sessions.create({
