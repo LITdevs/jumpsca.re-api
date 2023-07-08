@@ -3,7 +3,7 @@ import Reply from "../../classes/Reply/Reply.js";
 import Database from "../../db.js";
 import RequiredProperties from "../../util/middleware/RequiredProperties.js";
 import {checkPassword, encryptPassword} from "../../util/Password.js";
-import {emailRegex} from "../../schemas/userSchema.js";
+import {emailRegex, safeUser} from "../../schemas/userSchema.js";
 import BadRequestReply from "../../classes/Reply/BadRequestReply.js";
 import AccessToken from "../../classes/Token/AccessToken.js";
 import RefreshToken from "../../classes/Token/RefreshToken.js";
@@ -15,6 +15,7 @@ import Email from "../../classes/Email/Email.js";
 import * as crypto from "crypto";
 import ObjectIdToDate from "../../util/ObjectIdToDate.js";
 const router = express.Router();
+import tr46 from "tr46";
 
 const database = new Database();
 
@@ -67,7 +68,7 @@ router.post("/login/password", RequiredProperties([
 ]), async (req, res) => {
     let user = await database.User.findOne({email: req.body.email.trim()})
     if (!user) return res.reply(new BadRequestReply("Invalid email and password combination."))
-    if (!user.hashedPassword || !user.salt) return res.reply(new BadRequestReply("Invalid login method, try using magic link."))
+    if (!user.hashedPassword || !user.salt) return res.reply(new BadRequestReply("Invalid login method, try using email login."))
     if (!checkPassword(req.body.password, user.hashedPassword, user.salt)) return res.reply(new BadRequestReply("Invalid email and password combination."))
 
     // Congratulations! The password is correct.
@@ -103,7 +104,7 @@ router.post("/login/email", RequiredProperties([
 ]), async (req, res) => {
     if (req.body.code) {
         let dCode = await database.LoginCode.findOne({code: req.body.code}).populate("user");
-        if (!dCode || dCode.user.email !== req.body.email) return res.reply(new UnauthorizedReply("No such code"));
+        if (!dCode || dCode.user.email !== req.body.email) return res.reply(new UnauthorizedReply("Incorrect code"));
         if (ObjectIdToDate(dCode._id).getTime() + 15*60*1000 < Date.now()) return res.reply(new UnauthorizedReply("Expired code"));
 
         let token = new database.Token({
@@ -185,6 +186,18 @@ router.post("/login/refresh", RequiredProperties([
         console.error(e)
         return res.reply(new ServerErrorReply(e))
     }
+})
+
+router.get("/me", Auth, async (req, res) => {
+    let userAddresses = await database.Address.find({owner: req.user._id})
+    let parsed : any[] = []
+    res.reply(new Reply({
+        response: {
+            message: "Successfully authenticated",
+            user: safeUser(req.user),
+            userAddresses
+        }
+    }))
 })
 
 /*router.post("/icanhasauth", Auth, async (req, res) => {

@@ -42,6 +42,11 @@ const schema : mongoose.Schema = new mongoose.Schema({
             }
         }
     },
+    displayName: {
+        type: String,
+        required: true,
+        unique: true
+    },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user",

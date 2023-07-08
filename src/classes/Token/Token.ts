@@ -60,7 +60,6 @@ export default class Token {
      * @returns {Token}
      */
     static from(token: string) {
-        // TODO
         let tokenInformation = Token.parse(token);
         let oToken = new Token(tokenInformation.type, tokenInformation.expiresAt);
         oToken.token = token;

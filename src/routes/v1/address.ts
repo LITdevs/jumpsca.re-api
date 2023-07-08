@@ -103,6 +103,7 @@ router.post("/checkout/fulfill", async (req, res) => {
                     const addressExpiration = purchasedAddress.quantity * 365 * 24 * 60 * 60 * 1000;
                     let address = new database.Address({
                         name: tr46.toASCII(product.metadata.address, {processingOption: "transitional"}),
+                        displayName: product.metadata.address,
                         owner,
                         expiresAt: new Date(Date.now() + addressExpiration)
                     })
@@ -123,7 +124,7 @@ router.post("/checkout/fulfill", async (req, res) => {
                         displayName: addressNames[0], // They can change this later
                         email: sessionWithLineItems.customer_email, // This was supplied by us, so we know it is the one they want to use
                     })
-                    // Note the lack of password, this means they can only log in with a magic link
+                    // Note the lack of password, this means they can only log in with a one-time password
                     // We can prompt them to set a password later
                     await user.save();
                 }
@@ -252,7 +253,8 @@ router.post("/checkout/:address", RequiredProperties([
                 enabled: true
             },
             success_url: "https://jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}",
-            //success_url: "http://localhost:3000/checkout/success?session={CHECKOUT_SESSION_ID}",
+            //success_url: "https://7157.jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}",
+            //cancel_url: "https://7157.jumpsca.re/checkout/cancel",
             cancel_url: "https://jumpsca.re/checkout/cancel",
             mode: "payment"
         })
