@@ -5,12 +5,20 @@ import Database from "../../db.js";
 import NotFoundReply from "../../classes/Reply/NotFoundReply.js";
 import isAvailable, {IAvailabilityResponse} from "../../util/isAvailable.js";
 import BadRequestReply from "../../classes/Reply/BadRequestReply.js";
-import {stripe, stripeWebhook} from "../../index.js";
+import {cf, cfZoneId, stripe, stripeWebhook} from "../../index.js";
 import {Types} from "mongoose";
-import {emailRegex} from "../../schemas/userSchema.js";
+import {emailRegex, safeUser} from "../../schemas/userSchema.js";
 import tr46 from "tr46";
 import ServerErrorReply from "../../classes/Reply/ServerErrorReply.js";
 import Auth from "../../util/middleware/Auth.js";
+import {
+    contentOnlyRecordTypes,
+    createRecord,
+    getRecords,
+    priorityRequiredRecordTypes,
+    supportedRecordTypes
+} from "../../util/DNS.js";
+import FeatureFlag from "../../util/middleware/FeatureFlagMiddleware.js";
 
 const router = express.Router();
 
@@ -84,8 +92,10 @@ router.post("/checkout/fulfill", async (req, res) => {
                     const product = await stripe.products.retrieve(purchasedAddress.price.product as string);
                     console.log("product", product)
 
+                    let punyCodedAddress = tr46.toASCII(product.metadata.address, {processingOption: "transitional"})
+
                     // If the address already exists, update the expiration date
-                    let existingAddress = await database.Address.findOne({name: tr46.toASCII(product.metadata.address, {processingOption: "transitional"})})
+                    let existingAddress = await database.Address.findOne({name: punyCodedAddress})
                     if (existingAddress) {
                         console.log("Address already exists, updating expiration date")
                         existingAddress.expiresAt = new Date(existingAddress.expiresAt.getTime() + purchasedAddress.quantity * 365 * 24 * 60 * 60 * 1000);
@@ -102,10 +112,17 @@ router.post("/checkout/fulfill", async (req, res) => {
 
                     const addressExpiration = purchasedAddress.quantity * 365 * 24 * 60 * 60 * 1000;
                     let address = new database.Address({
-                        name: tr46.toASCII(product.metadata.address, {processingOption: "transitional"}),
+                        name: punyCodedAddress,
                         displayName: product.metadata.address,
                         owner,
                         expiresAt: new Date(Date.now() + addressExpiration)
+                    })
+
+                    await createRecord(punyCodedAddress, {
+                        name: `${punyCodedAddress}.jumpsca.re`,
+                        ttl: 300,
+                        type: "CNAME",
+                        content: "parked.lol"
                     })
 
                     addressNames.push(product.metadata.address);
@@ -329,11 +346,243 @@ router.post("/renew/:address", Auth, RequiredProperties([
     }
 })
 
-router.get("/:address", async (req, res) => {
+router.get("/dns/:address", FeatureFlag("JU-API-DNS-Read"), Auth, async (req, res) => {
+    req.params.address = tr46.toASCII(req.params.address.trim().toLowerCase(), { processingOption: "transitional" })
+    if (!req.params.address) return res.reply(new BadRequestReply("Invalid address"));
+    let address = await database.Address.findOne({name: req.params.address, owner: req.user._id});
+    if (!address) return res.reply(new NotFoundReply());
+
+    let records = await getRecords(req.params.address)
+
+    if (!records) return new ServerErrorReply();
+
+    res.reply(new Reply({
+        response: {
+            message: "Records retrieved",
+            records: records
+        }
+    }))
+})
+
+router.post("/dns/:address", FeatureFlag("JU-API-DNS-Edit"), RequiredProperties([
+    {
+        property: "name",
+        type: "string",
+        minLength: 1,
+        maxLength: 255,
+        trim: true
+    },
+    {
+        property: "content",
+        type: "string",
+        optional: true
+    },
+    {
+        property: "ttl",
+        type: "number",
+        min: 60,
+        max: 86400
+    },
+    {
+        property: "type",
+        type: "string",
+        enum: supportedRecordTypes
+    },
+    {
+        property: "data",
+        type: "object",
+        optional: true
+    },
+    {
+        property: "priority",
+        type: "number",
+        optional: true,
+        min: 0,
+        max: 65535
+    }
+]), Auth, async (req, res) => {
+    // Request validation
+    if (contentOnlyRecordTypes.includes(req.body.type) || priorityRequiredRecordTypes.includes(req.body.type)) {
+        if (!req.body.content) return res.reply(new BadRequestReply(`content is required for ${req.body.type} records.`))
+    }
+    if (priorityRequiredRecordTypes.includes(req.body.type)) {
+        if (!req.body.priority) return res.reply(new BadRequestReply(`priority is required for ${req.body.type} records.`))
+    }
+
+    // Address validation
+    req.params.address = tr46.toASCII(req.params.address.trim().toLowerCase(), { processingOption: "transitional" })
+    if (!req.params.address) return res.reply(new BadRequestReply("Invalid address"));
+    let address = await database.Address.findOne({name: req.params.address, owner: req.user._id});
+    if (!address) return res.reply(new NotFoundReply());
+
+    // @ts-ignore It thinks req.body.name is a boolean
+    if (!req.body.name === "@" && !req.body.name.endsWith(`.${req.params.address}.jumpsca.re`)) return res.reply(new BadRequestReply("Invalid name value"))
+
+    let record
+    switch (req.body.type) {
+        default:
+            record = {
+                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                content: req.body.content.trim().toLowerCase(),
+                ttl: req.body.ttl,
+                type: req.body.type,
+                priority: req.body.priority
+            }
+            break;
+        case "CAA":
+            // Fields present?
+            if (!req.body.data) return res.reply(new BadRequestReply(`data is required for ${req.body.type} records.`))
+            if (typeof req.body.data.flags === "undefined") return res.reply(new BadRequestReply(`data.flags is required for ${req.body.type} records.`))
+            if (!req.body.data.tag) return res.reply(new BadRequestReply(`data.tag is required for ${req.body.type} records.`))
+            if (!req.body.data.value) return res.reply(new BadRequestReply(`data.value is required for ${req.body.type} records.`))
+
+            // Field types and constraints
+            if (typeof req.body.data.flags !== "number" || req.body.data.flags < 0 || req.body.data.flags > 255)
+                return res.reply(new BadRequestReply(`data.flags should be a number between 0 and 255`))
+            if (typeof req.body.data.tag !== "string") return res.reply(new BadRequestReply(`data.tag should be a string`))
+            if (typeof req.body.data.value !== "string") return res.reply(new BadRequestReply(`data.value should be a string`))
+
+            // Map
+            record = {
+                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                data: {
+                    flags: req.body.data.flags,
+                    tag: req.body.data.tag,
+                    value: req.body.data.value
+                },
+                ttl: req.body.ttl,
+                type: req.body.type
+            }
+            break;
+        case "HTTPS":
+            // Fields present?
+            if (!req.body.data) return res.reply(new BadRequestReply(`data is required for ${req.body.type} records.`))
+            if (typeof req.body.data.priority === "undefined") return res.reply(new BadRequestReply(`data.priority is required for ${req.body.type} records.`))
+            if (!req.body.data.target) return res.reply(new BadRequestReply(`data.target is required for ${req.body.type} records.`))
+            if (!req.body.data.value) return res.reply(new BadRequestReply(`data.value is required for ${req.body.type} records.`))
+
+            // Field types and constraints
+            if (typeof req.body.data.priority !== "number" || req.body.data.priority < 0 || req.body.data.priority > 65535)
+                return res.reply(new BadRequestReply(`data.priority should be a number between 0 and 65535`))
+            if (typeof req.body.data.target !== "string") return res.reply(new BadRequestReply(`data.target should be a string`))
+            if (typeof req.body.data.value !== "string") return res.reply(new BadRequestReply(`data.value should be a string`))
+
+            // Map
+            record = {
+                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                data: {
+                    priority: req.body.data.priority,
+                    target: req.body.data.target,
+                    value: req.body.data.value
+                },
+                ttl: req.body.ttl,
+                type: req.body.type
+            }
+            break;
+        case "SRV":
+            // Fields present?
+            if (!req.body.data) return res.reply(new BadRequestReply(`data is required for ${req.body.type} records.`))
+            if (typeof req.body.data.port === "undefined") return res.reply(new BadRequestReply(`data.port is required for ${req.body.type} records.`))
+            if (typeof req.body.data.priority === "undefined") return res.reply(new BadRequestReply(`data.priority is required for ${req.body.type} records.`))
+            if (!req.body.data.proto) return res.reply(new BadRequestReply(`data.proto is required for ${req.body.type} records.`))
+            if (!req.body.data.service) return res.reply(new BadRequestReply(`data.service is required for ${req.body.type} records.`))
+            if (!req.body.data.target) return res.reply(new BadRequestReply(`data.target is required for ${req.body.type} records.`))
+            if (typeof req.body.data.weight === "undefined") return res.reply(new BadRequestReply(`data.weight is required for ${req.body.type} records.`))
+
+            // Field types and constraints
+            if (typeof req.body.data.port !== "number" || req.body.data.port < 0 || req.body.data.port > 65535)
+                return res.reply(new BadRequestReply(`data.port should be a number between 0 and 65535`))
+            if (typeof req.body.data.priority !== "number" || req.body.data.priority < 0 || req.body.data.priority > 65535)
+                return res.reply(new BadRequestReply(`data.priority should be a number between 0 and 65535`))
+            if (typeof req.body.data.proto !== "string") return res.reply(new BadRequestReply(`data.proto should be a string`))
+            if (typeof req.body.data.service !== "string") return res.reply(new BadRequestReply(`data.service should be a string`))
+            if (typeof req.body.data.target !== "string") return res.reply(new BadRequestReply(`data.target should be a string`))
+            if (typeof req.body.data.weight !== "number" || req.body.data.weight < 0 || req.body.data.weight > 65535)
+                return res.reply(new BadRequestReply(`data.weight should be a number between 0 and 65535`))
+
+            // Map
+            record = {
+                data: {
+                    name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                    port: req.body.data.port,
+                    priority: req.body.data.priority,
+                    proto: req.body.data.proto,
+                    service: req.body.data.service,
+                    target: req.body.data.target,
+                    weight: req.body.data.weight
+                },
+                ttl: req.body.ttl,
+                type: req.body.type
+            }
+            break;
+        case "URI":
+            // Fields present?
+            if (!req.body.data) return res.reply(new BadRequestReply(`data is required for ${req.body.type} records.`))
+            if (typeof req.body.data.weight === "undefined") return res.reply(new BadRequestReply(`data.weight is required for ${req.body.type} records.`))
+
+            // Field types and constraints
+            if (typeof req.body.data.weight !== "number" || req.body.data.weight < 0 || req.body.data.weight > 255)
+                return res.reply(new BadRequestReply(`data.weight should be a number between 0 and 255`))
+
+            // Map
+            record = {
+                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                data: {
+                    content: req.body.content,
+                    weight: req.body.data.weight
+                },
+                priority: req.body.priority,
+                ttl: req.body.ttl,
+                type: req.body.type
+            }
+            break;
+    }
+
+
+    try {
+        let cr = await createRecord(req.params.address, record);
+        if (cr?.success) {
+            res.reply(new Reply({
+                response: {
+                    message: "Record created",
+                    record,
+                    cloudflareResponse: cr.result
+                }
+            }))
+        } else {
+            res.reply(new BadRequestReply({
+                message: "Couldn't create record",
+                record,
+                errors: cr?.response?.body?.errors
+            }))
+        }
+    } catch (e) {
+        console.error(e)
+        res.reply(new ServerErrorReply())
+    }
+})
+
+router.get("/private/:address", Auth, async (req, res) => {
+    req.params.address = tr46.toASCII(req.params.address.trim().toLowerCase(), { processingOption: "transitional" })
+    if (!req.params.address) return res.reply(new BadRequestReply("Invalid address"));
+    let address = await database.Address.findOne({name: req.params.address, owner: req.user._id});
+    if (!address) return res.reply(new NotFoundReply());
+    await address.populate("owner");
+    address.owner = safeUser(address.owner)
+    res.reply(new Reply({
+        response: {
+            message: "Address found",
+            address
+        }
+    }));
+})
+
+router.get("/public/:address", async (req, res) => {
     // This is the most ridiculous if statement
     // Basically url.domainToASCII turns numbers into ipv4 addresses https://github.com/nodejs/node/issues/41343
     // This is apparently a feature, so here is a workaround:
     // Check if the address as a number is NaN, if it is not skip punycode conversion
+    let originalAddress = req.params.address;
     /*if (isNaN(Number(req.params.address))) */req.params.address = tr46.toASCII(req.params.address.trim().toLowerCase(), { processingOption: "transitional" })/*url.domainToASCII(req.params.address.trim());*/
     // ok all the comments before this are essentially a lie
     // I ended up going through like 4 libraries that do this, and then finally discovered tr46 (actually i found https://github.com/jcranmer/idna-uts46/ first)
@@ -343,7 +592,7 @@ router.get("/:address", async (req, res) => {
     // HOURS_WASTED = 3
     let addressAvailability : IAvailabilityResponse = await isAvailable(req.params.address);
     let available = (!addressAvailability.reserved && !addressAvailability.invalid && !addressAvailability.address);
-    if (addressAvailability.address === false) return res.reply(new NotFoundReply({ message: "Address not registered", name: req.params.address, available, invalid: addressAvailability.invalid }, true));
+    if (addressAvailability.address === false) return res.reply(new NotFoundReply({ message: "Address not registered", name: req.params.address || originalAddress, available, invalid: addressAvailability.invalid }, true));
     res.reply(new Reply({
         response: {
             message: "Address found",

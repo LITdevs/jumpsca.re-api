@@ -29,7 +29,7 @@ export default async function (name : string) : Promise<IAvailabilityResponse> {
 
     // Make sure it is valid
     console.log(name)
-    if (!subdomainRegex.test(name)) return {
+    if (!name || !subdomainRegex.test(name)) return {
         address: false,
         invalid: true
     }

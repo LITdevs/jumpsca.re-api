@@ -8,6 +8,17 @@ import FeatureFlag from "./util/middleware/FeatureFlagMiddleware.js";
 import Reply from "./classes/Reply/Reply.js";
 import { initialize } from 'unleash-client';
 import Stripe from "stripe";
+import Cloudflare from "cloudflare";
+
+
+const cfKey = process.env.CLOUDFLARE_KEY;
+const cfZone = process.env.CLOUDFLARE_ZONE;
+if (!cfKey) throw new Error("CLOUDFLARE_KEY not found in environment variables");
+if (!cfZone) throw new Error("CLOUDFLARE_ZONE not found in environment variables");
+export const cf = new Cloudflare({
+    token: cfKey
+})
+export const cfZoneId = cfZone;
 
 const stripeKey = process.env.STRIPE_KEY;
 const stripeWebhookKey = process.env.STRIPE_WEBHOOK_SECRET;
