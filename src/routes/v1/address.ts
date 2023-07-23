@@ -238,11 +238,63 @@ router.post("/checkout/:address", RequiredProperties([
         min: 1,
         max: 10,
         optional: true
+    },
+    {
+        property: "coupon",
+        type: "string",
+        optional: true
     }
 ]), async (req, res) => {
+
     let addressAvailability : IAvailabilityResponse = await isAvailable(tr46.toASCII(req.params.address, { processingOption: "transitional" }));
     if (addressAvailability.address !== false) return res.reply(new BadRequestReply("Address already registered"));
     try {
+
+        if (req.body.coupon) {
+            let coupon = await database.Coupon.findOne({code: req.body.coupon});
+            if (!coupon) return res.reply(new BadRequestReply("Invalid coupon"));
+            await database.Coupon.deleteOne({code: req.body.coupon});
+            // Create or find user
+            let ownerId
+            let existingUser = await database.User.findOne({email: req.body.email})
+            if (existingUser) {
+                ownerId = existingUser._id;
+            } else {
+                ownerId = new Types.ObjectId();
+                console.log("Creating new user")
+                let user = new database.User({
+                    _id: ownerId,
+                    displayName: req.params.address,
+                    email: req.body.email,
+                })
+                // Note the lack of password, this means they can only log in with a one-time password
+                // We can prompt them to set a password later
+                await user.save();
+            }
+            let punyCodedAddress = tr46.toASCII(req.params.address, {processingOption: "transitional"})
+            const addressExpiration = 365 * 24 * 60 * 60 * 1000;
+            let address = new database.Address({
+                name: punyCodedAddress,
+                displayName: req.params.address,
+                owner: ownerId,
+                expiresAt: new Date(Date.now() + addressExpiration)
+            })
+
+            await address.save();
+            await createRecord(punyCodedAddress, {
+                name: `${punyCodedAddress}.${ejson.environment === "dev" ? "phoenix." : ""}jumpsca.re`,
+                ttl: 300,
+                type: "CNAME",
+                content: "parked.lol"
+            })
+
+            return res.reply(new Reply({
+                response: {
+                    message: "Coupon redeemed",
+                    redirect: `https://${ejson.environment === "dev" ? "phoenix." : ""}jumpsca.re/checkout/success?coupon=true&address=${req.params.address}`
+                }
+            }))
+        }
 
         const stripeSession = await stripe.checkout.sessions.create({
             line_items: [
@@ -286,6 +338,7 @@ router.post("/checkout/:address", RequiredProperties([
         if (e?.raw?.statusCode === 400) {
             return res.reply(new BadRequestReply(e.code))
         }
+        console.error(e)
         return res.reply(new ServerErrorReply("Failed to create Stripe session"))
     }
 })
