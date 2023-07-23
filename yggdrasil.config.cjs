@@ -12,9 +12,5 @@ module.exports = {
 			"path" : "/home/jumpscare/phoenix",
 			"post-deploy" : "yarn install"
 		}
-	},
-	env: {
-		NODE_ENV: 'development',
-		DEBUG: 'custom:*'
 	}
 };
