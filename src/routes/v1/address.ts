@@ -269,6 +269,7 @@ router.post("/checkout/:address", RequiredProperties([
             automatic_tax: {
                 enabled: true
             },
+            allow_promotion_codes: true,
             success_url: `https://${ejson.environment === "dev" ? "phoenix." : ""}jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}`,
             //success_url: "https://7157.jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}",
             //cancel_url: "https://7157.jumpsca.re/checkout/cancel",
@@ -328,6 +329,7 @@ router.post("/renew/:address", Auth, RequiredProperties([
             automatic_tax: {
                 enabled: true
             },
+            allow_promotion_codes: true,
             success_url: `https://${ejson.environment === "dev" ? "phoenix." : ""}jumpsca.re/renewal/success?session={CHECKOUT_SESSION_ID}`,
             cancel_url: `https://${ejson.environment === "dev" ? "phoenix." : ""}jumpsca.re/renewal/cancel`,
             mode: "payment"
