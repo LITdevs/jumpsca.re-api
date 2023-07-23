@@ -5,7 +5,7 @@ import Database from "../../db.js";
 import NotFoundReply from "../../classes/Reply/NotFoundReply.js";
 import isAvailable, {IAvailabilityResponse} from "../../util/isAvailable.js";
 import BadRequestReply from "../../classes/Reply/BadRequestReply.js";
-import {cf, cfZoneId, stripe, stripeWebhook} from "../../index.js";
+import {cf, cfZoneId, ejson, stripe, stripeWebhook} from "../../index.js";
 import {Types} from "mongoose";
 import {emailRegex, safeUser} from "../../schemas/userSchema.js";
 import tr46 from "tr46";
@@ -119,7 +119,7 @@ router.post("/checkout/fulfill", async (req, res) => {
                     })
 
                     await createRecord(punyCodedAddress, {
-                        name: `${punyCodedAddress}.jumpsca.re`,
+                        name: `${punyCodedAddress}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re`,
                         ttl: 300,
                         type: "CNAME",
                         content: "parked.lol"
@@ -251,7 +251,7 @@ router.post("/checkout/:address", RequiredProperties([
                         currency: "eur",
                         unit_amount: 200,
                         product_data: {
-                            name: `${req.params.address}.jumpsca.re`,
+                            name: `${req.params.address}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re`,
                             metadata: {
                                 address: req.params.address
                             }
@@ -269,10 +269,10 @@ router.post("/checkout/:address", RequiredProperties([
             automatic_tax: {
                 enabled: true
             },
-            success_url: "https://jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}",
+            success_url: `https://${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}`,
             //success_url: "https://7157.jumpsca.re/checkout/success?session={CHECKOUT_SESSION_ID}",
             //cancel_url: "https://7157.jumpsca.re/checkout/cancel",
-            cancel_url: "https://jumpsca.re/checkout/cancel",
+            cancel_url: `https://${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re/checkout/cancel`,
             mode: "payment"
         })
         res.reply(new Reply({
@@ -309,7 +309,7 @@ router.post("/renew/:address", Auth, RequiredProperties([
                         currency: "eur",
                         unit_amount: 200,
                         product_data: {
-                            name: `${req.params.address}.jumpsca.re Renewal for ${req.body.years} years`,
+                            name: `${req.params.address}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re Renewal for ${req.body.years} years`,
                             metadata: {
                                 address: req.params.address,
                                 renewal: "yes"
@@ -328,8 +328,8 @@ router.post("/renew/:address", Auth, RequiredProperties([
             automatic_tax: {
                 enabled: true
             },
-            success_url: "https://jumpsca.re/renewal/success?session={CHECKOUT_SESSION_ID}",
-            cancel_url: "https://jumpsca.re/renewal/cancel",
+            success_url: `https://${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re/renewal/success?session={CHECKOUT_SESSION_ID}`,
+            cancel_url: `https://${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re/renewal/cancel`,
             mode: "payment"
         })
         res.reply(new Reply({
@@ -416,13 +416,13 @@ router.post("/dns/:address", FeatureFlag("JU-API-DNS-Edit"), RequiredProperties(
     if (!address) return res.reply(new NotFoundReply());
 
     // @ts-ignore It thinks req.body.name is a boolean
-    if (!req.body.name === "@" && !req.body.name.endsWith(`.${req.params.address}.jumpsca.re`)) return res.reply(new BadRequestReply("Invalid name value"))
+    if (!req.body.name === "@" && !req.body.name.endsWith(`.${req.params.address}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re`)) return res.reply(new BadRequestReply("Invalid name value"))
 
     let record
     switch (req.body.type) {
         default:
             record = {
-                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re`),
                 content: req.body.content.trim().toLowerCase(),
                 ttl: req.body.ttl,
                 type: req.body.type,
@@ -444,7 +444,7 @@ router.post("/dns/:address", FeatureFlag("JU-API-DNS-Edit"), RequiredProperties(
 
             // Map
             record = {
-                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re`),
                 data: {
                     flags: req.body.data.flags,
                     tag: req.body.data.tag,
@@ -469,7 +469,7 @@ router.post("/dns/:address", FeatureFlag("JU-API-DNS-Edit"), RequiredProperties(
 
             // Map
             record = {
-                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re`),
                 data: {
                     priority: req.body.data.priority,
                     target: req.body.data.target,
@@ -503,7 +503,7 @@ router.post("/dns/:address", FeatureFlag("JU-API-DNS-Edit"), RequiredProperties(
             // Map
             record = {
                 data: {
-                    name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                    name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re`),
                     port: req.body.data.port,
                     priority: req.body.data.priority,
                     proto: req.body.data.proto,
@@ -526,7 +526,7 @@ router.post("/dns/:address", FeatureFlag("JU-API-DNS-Edit"), RequiredProperties(
 
             // Map
             record = {
-                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.jumpsca.re`),
+                name: req.body.name.trim().toLowerCase().replace("@", `${req.params.address}.${ejson.env === "dev" ? "phoenix." : ""}jumpsca.re`),
                 data: {
                     content: req.body.content,
                     weight: req.body.data.weight
