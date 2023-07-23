@@ -26,6 +26,6 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: pm2 deploy yggdrasil.config.cjs phoenix
-        if: github.ref_name == "phoenix"
+        if: github.ref_name == 'phoenix'
       - run: pm2 deploy yggdrasil.config.cjs production
-        if: github.ref_name == "prod"
+        if: github.ref_name == 'prod'
