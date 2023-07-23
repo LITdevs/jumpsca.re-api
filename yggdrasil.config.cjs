@@ -19,7 +19,7 @@ module.exports = {
 			"ref"  : "origin/phoenix",
 			"repo" : "git@github.com:LITdevs/jumpsca.re-api.git",
 			"path" : "/home/jumpscare/phoenix",
-			"post-deploy" : "yarn install && pm2 startOrRestart ecosystem.json --env phoenix"
+			"post-deploy" : "yarn install && pm2 startOrRestart yggdrasil.config.cjs --env phoenix"
 		}
 	}
 };
