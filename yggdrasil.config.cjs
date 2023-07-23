@@ -23,6 +23,14 @@ module.exports = {
 			"repo" : "git@github.com:LITdevs/jumpsca.re-api.git",
 			"path" : "/home/jumpscare/phoenix",
 			"post-deploy" : "yarn install && pm2 startOrRestart yggdrasil.config.cjs --only jumpsca.re-phoenix --env phoenix"
+		},
+		production : {
+			"user" : "jumpscare",
+			"host" : ["kirito.yggdrasil.cat"],
+			"ref"  : "origin/prod",
+			"repo" : "git@github.com:LITdevs/jumpsca.re-api.git",
+			"path" : "/home/jumpscare/production",
+			"post-deploy" : "yarn install && pm2 startOrRestart yggdrasil.config.cjs --only jumpsca.re-production --env production"
 		}
 	}
 };
