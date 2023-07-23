@@ -1,11 +1,14 @@
 module.exports = {
 	apps : [{
-		name: `jumpsca.re-${process.env.JR_ENV}`,
+		name: `jumpsca.re-phoenix`,
 		script: 'npm run start',
 		env_phoenix: {
 			JR_ENV: "phoenix",
 			NODE_ENV: "production"
-		},
+		}
+	},{
+		name: `jumpsca.re-production`,
+		script: 'npm run start',
 		env_production: {
 			JR_ENV: "production",
 			NODE_ENV: "production"
@@ -19,7 +22,7 @@ module.exports = {
 			"ref"  : "origin/phoenix",
 			"repo" : "git@github.com:LITdevs/jumpsca.re-api.git",
 			"path" : "/home/jumpscare/phoenix",
-			"post-deploy" : "yarn install && pm2 startOrRestart yggdrasil.config.cjs --env phoenix"
+			"post-deploy" : "yarn install && pm2 startOrRestart yggdrasil.config.cjs --env phoenix --only \"jumpsca.re-phoenix\""
 		}
 	}
 };
