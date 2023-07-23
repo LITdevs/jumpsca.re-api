@@ -1,6 +1,15 @@
 module.exports = {
 	apps : [{
+		name: `jumpsca.re-${process.env.JR_ENV}`,
 		script: 'npm run start',
+		env_phoenix: {
+			JR_ENV: "phoenix",
+			NODE_ENV: "production"
+		},
+		env_production: {
+			JR_ENV: "production",
+			NODE_ENV: "production"
+		}
 	}],
 	// Deployment Configuration
 	deploy : {
@@ -10,7 +19,7 @@ module.exports = {
 			"ref"  : "origin/phoenix",
 			"repo" : "git@github.com:LITdevs/jumpsca.re-api.git",
 			"path" : "/home/jumpscare/phoenix",
-			"post-deploy" : "yarn install"
+			"post-deploy" : "yarn install && pm2 startOrRestart ecosystem.json --env phoenix"
 		}
 	}
 };

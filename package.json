@@ -10,7 +10,8 @@
 	"scripts": {
 		"npxwatch": "npx tsc --watch",
 		"nodemon": "nodemon -q dist/index.js",
-		"dev": "npm-run-all --parallel npxwatch nodemon"
+		"dev": "npm-run-all --parallel npxwatch nodemon",
+		"start": "npx tsc && node dist/index.js"
 	},
 	"dependencies": {
 		"axios": "^1.4.0",
