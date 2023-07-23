@@ -20,6 +20,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: yarn install
+      - run: yarn global add pm2
       - run: pm2 deploy yggdrasil.config.cjs phoenix
         if: github.ref_name == 'phoenix'
       - run: pm2 deploy yggdrasil.config.cjs production
