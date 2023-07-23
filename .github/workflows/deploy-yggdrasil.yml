@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
       - run: pm2 deploy yggdrasil.config.cjs phoenix
         if: github.ref_name == 'phoenix'
       - run: pm2 deploy yggdrasil.config.cjs production
