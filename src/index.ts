@@ -72,7 +72,7 @@ app.use((req, res, next) => {
     }
 
     res.locals.unleashContext = {
-        remoteAddress: req.headers["cf-connecting-ip"] || req.ip,
+        remoteAddress: req.headers["x-forwarded-for"] || req.ip,
     };
 
     console.log(res.locals.unleashContext)
