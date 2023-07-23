@@ -2,7 +2,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 import mongoose from 'mongoose';
 import EventEmitter from "events";
-import testSchema from "./schemas/testSchema.js";
+import addressSchema from "./schemas/addressSchema.js";
+import userSchema from "./schemas/userSchema.js";
+import tokenSchema from "./schemas/tokenSchema.js";
+import loginCodeSchema from "./schemas/loginCodeSchema.js";
+import couponSchema from "./schemas/couponSchema.js";
 /*import loginUserSchema from './schemas/loginUserSchema.js'
 import userAvatarSchema from './schemas/userAvatarSchema.js'
 import quarkSchema from "./schemas/quarkSchema.js";
@@ -19,7 +23,11 @@ export default class Database {
     db: any;
     events: EventEmitter = new EventEmitter();
 
-    Test;
+    Address;
+    User;
+    Token;
+    LoginCode;
+    Coupon;
 
     constructor() {
         if (typeof Database._instance === "object") return Database._instance;
@@ -41,14 +49,12 @@ export default class Database {
     }
 
     #onOpen() {
-        console.log("Database connection established");
-        this.Test = this.db.model('test', testSchema);
-        /*Avatars = lqdb.model('avatar', userAvatarSchema)
-        Quarks = lqdb.model('quark', quarkSchema)
-        Channels = lqdb.model('channel', channelSchema)
-        Messages = lqdb.model('message', messageSchema)
-        QuarkOrders = lqdb.model('quarkOrder', quarkOrderSchema)
-        Nicks = lqdb.model('nick', nicknameSchema)*/
+        console.log("Runestone connection established");
+        this.Address = this.db.model('address', addressSchema);
+        this.User = this.db.model('user', userSchema);
+        this.Token = this.db.model('token', tokenSchema);
+        this.LoginCode = this.db.model('logincode', loginCodeSchema);
+        this.Coupon = this.db.model("coupon", couponSchema);
         this.events.emit("ready");
     }
 }
