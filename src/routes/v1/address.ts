@@ -5,7 +5,7 @@ import Database from "../../db.js";
 import NotFoundReply from "../../classes/Reply/NotFoundReply.js";
 import isAvailable, {IAvailabilityResponse} from "../../util/isAvailable.js";
 import BadRequestReply from "../../classes/Reply/BadRequestReply.js";
-import {cf, cfZoneId, ejson, stripe, stripeWebhook} from "../../index.js";
+import {cf, cfZoneId, ejson, stripe, stripeWebhook, unleash} from "../../index.js";
 import {Types} from "mongoose";
 import {emailRegex, safeUser} from "../../schemas/userSchema.js";
 import tr46 from "tr46";
@@ -19,6 +19,7 @@ import {
     supportedRecordTypes
 } from "../../util/DNS.js";
 import FeatureFlag from "../../util/middleware/FeatureFlagMiddleware.js";
+import ForbiddenReply from "../../classes/Reply/ForbiddenReply.js";
 
 const router = express.Router();
 
@@ -295,6 +296,7 @@ router.post("/checkout/:address", RequiredProperties([
                 }
             }))
         }
+        if (!unleash.isEnabled("JU-API-Payment", res.locals.unleashContext)) return res.reply(new ForbiddenReply("You are not authorized to make payments"))
 
         const stripeSession = await stripe.checkout.sessions.create({
             line_items: [
@@ -355,6 +357,8 @@ router.post("/renew/:address", Auth, RequiredProperties([
     try {
         let address = await database.Address.findOne({name: req.params.address, owner: req.user._id});
         if (!address) return res.reply(new NotFoundReply("Address not found"));
+
+        if (!unleash.isEnabled("JU-API-Payment", res.locals.unleashContext)) return res.reply(new ForbiddenReply("You are not authorized to make payments"))
 
         const stripeSession = await stripe.checkout.sessions.create({
             line_items: [
