@@ -75,8 +75,6 @@ app.use((req, res, next) => {
         remoteAddress: req.headers["x-forwarded-for"] || req.ip,
     };
 
-    console.log(res.locals.unleashContext)
-
     // Continue
     next();
 })

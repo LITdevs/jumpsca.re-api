@@ -11,7 +11,6 @@ let database = new Database();
  * @param req
  * @param res
  * @param next
- * @constructor
  */
 export default async function Auth(req, res, next) {
     if (!req.headers.authorization) return res.reply(new UnauthorizedReply("Missing Authorization header with Bearer token"))

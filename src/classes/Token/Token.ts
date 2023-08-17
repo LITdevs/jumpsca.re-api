@@ -9,9 +9,21 @@ export default class Token {
     type: "access"|"refresh";
     expiresAt: Date;
     createdAt: Date;
+    scope: "WC"|"JR";
 
-    constructor(type: "access"|"refresh", expiry: Date = new Date(0)) {
-        let prefixPart = "JR";
+    constructor(type: "access"|"refresh", expiry: Date = new Date(0), scope : string = "JR") {
+        let prefixPart = scope;
+        // "Why is this a switch" For no good reason.
+        switch (scope) {
+            case "JR":
+                this.scope = "JR";
+                break;
+            case "WC":
+                this.scope = "WC";
+                break;
+            default:
+                throw new Error(`Unknown token scope ${scope}`)
+        }
         let typePart;
         switch (type) {
             case "access":
@@ -61,7 +73,7 @@ export default class Token {
      */
     static from(token: string) {
         let tokenInformation = Token.parse(token);
-        let oToken = new Token(tokenInformation.type, tokenInformation.expiresAt);
+        let oToken = new Token(tokenInformation.type, tokenInformation.expiresAt, tokenInformation.scope);
         oToken.token = token;
         oToken.createdAt = tokenInformation.createdAt;
         return oToken;
@@ -86,7 +98,7 @@ export default class Token {
         if (tokenParts.length !== 5) throw new Error(`Invalid token: should have 5 parts but has ${tokenParts.length}`);
         let [prefixPart, typePart, randomPart, creationTimePart, expiryTimePart] = tokenParts;
 
-        if (prefixPart !== "JR") throw new Error(`Invalid token: prefix should be JR but is ${prefixPart}`);
+        if (!["JR", "WC"].includes(prefixPart)) throw new Error(`Invalid token: prefix should be JR (or WC) but is ${prefixPart}`);
 
         if (!["RE", "AC"].includes(typePart)) throw new Error(`Invalid token: type should be RE or AC but is ${typePart}`);
         let type;
@@ -103,7 +115,8 @@ export default class Token {
         return {
             type,
             createdAt,
-            expiresAt
+            expiresAt,
+            scope: prefixPart
         }
     }
 }

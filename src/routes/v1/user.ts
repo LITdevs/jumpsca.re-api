@@ -22,6 +22,7 @@ const database = new Database();
 // https://my.lettuce.systems/file/qL8imQ.png
 // Two uppercase, one special*, two numbers, three lowercase, eight characters or more
 // *The list of special characters could be improved
+// Hi! It's future me. I don't know what this dead link was??
 export const passwordRegex = /^(?=.*[A-Z].*[A-Z])(?=.*[!@#$%^&*()\-_+.§½?\\\/])(?=.*[0-9].*[0-9])(?=.*[a-z].*[a-z].*[a-z]).{8,}$/
 
 router.put("/login/password", Auth, RequiredProperties([
@@ -171,7 +172,7 @@ router.post("/login/refresh", RequiredProperties([
         if (dToken.refresh !== refreshToken.token) return res.reply(new UnauthorizedReply("Invalid token"))
         if (dToken.access !== accessToken.token) return res.reply(new UnauthorizedReply("Invalid token"))
 
-        dToken.access = new AccessToken(new Date(Date.now() + 1000*60*60*8)); // Generate a new access token for 8 hours
+        dToken.access = new AccessToken(new Date(Date.now() + 1000*60*60*8), accessToken.scope); // Generate a new access token for 8 hours
         await dToken.save();
         return res.reply(new Reply({
             response: {
