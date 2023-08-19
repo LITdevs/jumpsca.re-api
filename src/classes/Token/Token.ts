@@ -3,6 +3,7 @@
 // Why did I do this
 import * as crypto from "crypto";
 import Database from "../../db.js";
+import WCDatabase from "../../wcdb.js";
 
 export default class Token {
     token: string;
@@ -54,13 +55,32 @@ export default class Token {
      * @returns {Promise<any>}
      */
     async invalidate() {
-        const database = new Database();
+        let database;
+        switch (this.scope) {
+            case "WC":
+                database = new WCDatabase()
+                break;
+            default:
+                database = new Database();
+                break;
+        }
         return await database.Token.deleteOne({$or: [{refresh: this.token}, {access: this.token}]});
     }
 
     async isActive() : Promise<any> {
-        const database = new Database();
-        let tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]}).populate("user");
+        let database;
+        let tokenDocument;
+        switch (this.scope) {
+            case "WC":
+                database = new WCDatabase()
+                tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]});
+                break;
+            default:
+                database = new Database();
+                tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]}).populate("user");
+                break;
+        }
+
         if (!tokenDocument) return false;
         if (this.type === "refresh") return tokenDocument;
         return !this.expired ? tokenDocument : false;
@@ -87,7 +107,7 @@ export default class Token {
         // JR.RE.fz_z_MVQj8UQ3lY_UmrUjekE_2U4dn8d4WIkfHqJ7ZQRN-O1BNu6xfKINhKCrv1I.ljlioshm.ljlirzu1
         // JR.AC.fz_z_MVQj8UQ3lY_UmrUjekE_2U4dn8d4WIkfHqJ7ZQRN-O1BNu6xfKINhKCrv1I.ljlioshm.ljlirzu1
         // XX.YY.ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ.CCCCCCCC.EEEEEEEE
-        // XX = JR
+        // XX = JR or WC for scope Wanderers or Jumpscare
         // YY = REfresh or ACcess?
         // ZZ = 64 randomly generated characters from 48 random baseurl encoded bytes
         // CC = Current timestamp milliseconds encoded in base36

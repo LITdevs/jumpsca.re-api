@@ -16,6 +16,7 @@ import * as crypto from "crypto";
 import ObjectIdToDate from "../../util/ObjectIdToDate.js";
 const router = express.Router();
 import tr46 from "tr46";
+import WCDatabase from "../../wcdb.js";
 
 const database = new Database();
 
@@ -197,6 +198,25 @@ router.get("/me", Auth, async (req, res) => {
             message: "Successfully authenticated",
             user: safeUser(req.user),
             userAddresses
+        }
+    }))
+})
+
+router.post("/wc", Auth, async (req, res) => {
+    let wcDatabase = new WCDatabase();
+    let token = new wcDatabase.Token({
+        access: new AccessToken(new Date(Date.now() + 1000*60*60*8), "WC"),
+        refresh: new RefreshToken("WC"),
+        user: req.user._id
+    })
+    await token.save();
+    return res.reply(new Reply({
+        responseCode: 201,
+        response: {
+            message: "Token created",
+            accessToken: token.access,
+            refreshToken: token.refresh,
+            expiresInSec: 28800
         }
     }))
 })
