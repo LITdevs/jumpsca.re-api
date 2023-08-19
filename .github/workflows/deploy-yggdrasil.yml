@@ -24,3 +24,9 @@ jobs:
         if: github.ref_name == 'phoenix'
       - run: pm2 deploy yggdrasil.config.cjs production
         if: github.ref_name == 'prod'
+      - name: Create commit comment
+        uses: peter-evans/commit-comment@v2
+        with:
+          body: |
+            Changes deployed to server
+            Environment ${{ github.ref_name }}
