@@ -4,6 +4,11 @@ on:
   push:
     branches: [ "prod", "phoenix" ]
 
+permissions:
+  pull-requests: write
+  contents: write
+
+
 jobs:
   build:
 
@@ -27,6 +32,7 @@ jobs:
       - name: Create commit comment
         uses: peter-evans/commit-comment@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             Changes deployed to server
             Environment ${{ github.ref_name }}
