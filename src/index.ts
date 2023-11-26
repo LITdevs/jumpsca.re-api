@@ -39,6 +39,7 @@ if (ejson.env === "prod") process.env.NODE_ENV = "production";
 export { pjson, ejson }
 
 const database = new Database();
+const wcDatabase = new WCDatabase();
 const app = express();
 
 export const unleash = initialize({
@@ -75,8 +76,6 @@ app.use((req, res, next) => {
         remoteAddress: req.headers["x-forwarded-for"] || req.ip,
     };
 
-    console.log(res.locals.unleashContext)
-
     // Continue
     next();
 })
@@ -91,14 +90,17 @@ app.locals.ejson = ejson;
 import v1_home from "./routes/v1/home.js";
 import v1_address from "./routes/v1/address.js";
 import v1_user from "./routes/v1/user.js";
+import v1_site from "./routes/v1/site.js";
 import Email from "./classes/Email/Email.js";
 import RefreshToken from "./classes/Token/RefreshToken.js";
 import AccessToken from "./classes/Token/AccessToken.js";
 import Token from "./classes/Token/Token.js";
 import ServerErrorReply from "./classes/Reply/ServerErrorReply.js";
+import WCDatabase from "./wcdb.js";
 app.use("/v1", v1_home);
 app.use("/v1/address", v1_address);
 app.use("/v1/user", v1_user);
+app.use("/v1/site", v1_site)
 
 /*app.get("/token", async (req, res) => {
     try {
@@ -131,9 +133,16 @@ app.all("*", async (req, res) => {
     res.reply(new NotFoundReply());
 })
 
-// Make sure both the database and feature gacha are ready before starting listening for requests
+// Make sure both databases and feature gacha are ready before starting listening for requests
 let unleashReady = false;
 let databaseReady = false;
+let wcDatabaseReady = false;
+
+wcDatabase.events.once("ready", () => {
+    wcDatabaseReady = true;
+    startServer();
+})
+
 database.events.once("ready", () => {
     databaseReady = true;
     startServer();
@@ -146,7 +155,7 @@ unleash.on('synchronized', () => {
 });
 
 const startServer = () => {
-    if (!databaseReady || !unleashReady) return;
+    if (!databaseReady || !wcDatabaseReady || !unleashReady) return;
     app.listen(process.env.PORT || 18665, async () => {
         console.log(`${await database.Address.countDocuments({})} address documents in Runestone`)
         console.log(`Listening on port ${process.env.PORT || 18665}`);

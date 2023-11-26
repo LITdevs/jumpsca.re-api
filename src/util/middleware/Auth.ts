@@ -11,7 +11,6 @@ let database = new Database();
  * @param req
  * @param res
  * @param next
- * @constructor
  */
 export default async function Auth(req, res, next) {
     if (!req.headers.authorization) return res.reply(new UnauthorizedReply("Missing Authorization header with Bearer token"))
@@ -21,6 +20,11 @@ export default async function Auth(req, res, next) {
     let token = splitHeader[1]
     try {
         let oToken = Token.from(token);
+        if (oToken.scope !== "JR") return res.reply(new Reply({
+            responseCode: 418, // lul
+            success: false,
+            response: "Bearer token is not for this service"
+        }))
         if (oToken.type !== "access") return res.reply(new UnauthorizedReply("Bearer token is not access token"))
 
         // Wowie! We made it through all those checks... surely this token is real?

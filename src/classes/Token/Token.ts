@@ -3,15 +3,28 @@
 // Why did I do this
 import * as crypto from "crypto";
 import Database from "../../db.js";
+import WCDatabase from "../../wcdb.js";
 
 export default class Token {
     token: string;
     type: "access"|"refresh";
     expiresAt: Date;
     createdAt: Date;
+    scope: "WC"|"JR";
 
-    constructor(type: "access"|"refresh", expiry: Date = new Date(0)) {
-        let prefixPart = "JR";
+    constructor(type: "access"|"refresh", expiry: Date = new Date(0), scope : string = "JR") {
+        let prefixPart = scope;
+        // "Why is this a switch" For no good reason.
+        switch (scope) {
+            case "JR":
+                this.scope = "JR";
+                break;
+            case "WC":
+                this.scope = "WC";
+                break;
+            default:
+                throw new Error(`Unknown token scope ${scope}`)
+        }
         let typePart;
         switch (type) {
             case "access":
@@ -42,13 +55,32 @@ export default class Token {
      * @returns {Promise<any>}
      */
     async invalidate() {
-        const database = new Database();
+        let database;
+        switch (this.scope) {
+            case "WC":
+                database = new WCDatabase()
+                break;
+            default:
+                database = new Database();
+                break;
+        }
         return await database.Token.deleteOne({$or: [{refresh: this.token}, {access: this.token}]});
     }
 
     async isActive() : Promise<any> {
-        const database = new Database();
-        let tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]}).populate("user");
+        let database;
+        let tokenDocument;
+        switch (this.scope) {
+            case "WC":
+                database = new WCDatabase()
+                tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]});
+                break;
+            default:
+                database = new Database();
+                tokenDocument = await database.Token.findOne({$or: [{refresh: this.token}, {access: this.token}]}).populate("user");
+                break;
+        }
+
         if (!tokenDocument) return false;
         if (this.type === "refresh") return tokenDocument;
         return !this.expired ? tokenDocument : false;
@@ -61,7 +93,7 @@ export default class Token {
      */
     static from(token: string) {
         let tokenInformation = Token.parse(token);
-        let oToken = new Token(tokenInformation.type, tokenInformation.expiresAt);
+        let oToken = new Token(tokenInformation.type, tokenInformation.expiresAt, tokenInformation.scope);
         oToken.token = token;
         oToken.createdAt = tokenInformation.createdAt;
         return oToken;
@@ -75,7 +107,7 @@ export default class Token {
         // JR.RE.fz_z_MVQj8UQ3lY_UmrUjekE_2U4dn8d4WIkfHqJ7ZQRN-O1BNu6xfKINhKCrv1I.ljlioshm.ljlirzu1
         // JR.AC.fz_z_MVQj8UQ3lY_UmrUjekE_2U4dn8d4WIkfHqJ7ZQRN-O1BNu6xfKINhKCrv1I.ljlioshm.ljlirzu1
         // XX.YY.ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ.CCCCCCCC.EEEEEEEE
-        // XX = JR
+        // XX = JR or WC for scope Wanderers or Jumpscare
         // YY = REfresh or ACcess?
         // ZZ = 64 randomly generated characters from 48 random baseurl encoded bytes
         // CC = Current timestamp milliseconds encoded in base36
@@ -86,7 +118,7 @@ export default class Token {
         if (tokenParts.length !== 5) throw new Error(`Invalid token: should have 5 parts but has ${tokenParts.length}`);
         let [prefixPart, typePart, randomPart, creationTimePart, expiryTimePart] = tokenParts;
 
-        if (prefixPart !== "JR") throw new Error(`Invalid token: prefix should be JR but is ${prefixPart}`);
+        if (!["JR", "WC"].includes(prefixPart)) throw new Error(`Invalid token: prefix should be JR (or WC) but is ${prefixPart}`);
 
         if (!["RE", "AC"].includes(typePart)) throw new Error(`Invalid token: type should be RE or AC but is ${typePart}`);
         let type;
@@ -103,7 +135,8 @@ export default class Token {
         return {
             type,
             createdAt,
-            expiresAt
+            expiresAt,
+            scope: prefixPart
         }
     }
 }
