@@ -90,6 +90,7 @@ app.locals.ejson = ejson;
 import v1_home from "./routes/v1/home.js";
 import v1_address from "./routes/v1/address.js";
 import v1_user from "./routes/v1/user.js";
+import v1_site from "./routes/v1/site.js";
 import Email from "./classes/Email/Email.js";
 import RefreshToken from "./classes/Token/RefreshToken.js";
 import AccessToken from "./classes/Token/AccessToken.js";
@@ -99,6 +100,7 @@ import WCDatabase from "./wcdb.js";
 app.use("/v1", v1_home);
 app.use("/v1/address", v1_address);
 app.use("/v1/user", v1_user);
+app.use("/v1/site", v1_site)
 
 /*app.get("/token", async (req, res) => {
     try {

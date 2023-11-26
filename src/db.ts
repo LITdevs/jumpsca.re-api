@@ -7,6 +7,7 @@ import userSchema from "./schemas/userSchema.js";
 import tokenSchema from "./schemas/tokenSchema.js";
 import loginCodeSchema from "./schemas/loginCodeSchema.js";
 import couponSchema from "./schemas/couponSchema.js";
+import siteSchema from "./schemas/siteSchema.js";
 /*import loginUserSchema from './schemas/loginUserSchema.js'
 import userAvatarSchema from './schemas/userAvatarSchema.js'
 import quarkSchema from "./schemas/quarkSchema.js";
@@ -28,6 +29,7 @@ export default class Database {
     Token;
     LoginCode;
     Coupon;
+    Site;
 
     constructor() {
         if (typeof Database._instance === "object") return Database._instance;
@@ -55,6 +57,7 @@ export default class Database {
         this.Token = this.db.model('token', tokenSchema);
         this.LoginCode = this.db.model('logincode', loginCodeSchema);
         this.Coupon = this.db.model("coupon", couponSchema);
+        this.Site = this.db.model("site", siteSchema);
         this.events.emit("ready");
     }
 }
