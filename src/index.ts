@@ -6,10 +6,8 @@ import NotFoundReply from "./classes/Reply/NotFoundReply.js";
 import Database from "./db.js";
 import FeatureFlag from "./util/middleware/FeatureFlagMiddleware.js";
 import Reply from "./classes/Reply/Reply.js";
-import { initialize } from 'unleash-client';
 import Stripe from "stripe";
 import Cloudflare from "cloudflare";
-
 
 const cfKey = process.env.CLOUDFLARE_KEY;
 const cfZone = process.env.CLOUDFLARE_ZONE;
@@ -42,14 +40,6 @@ const database = new Database();
 const wcDatabase = new WCDatabase();
 const app = express();
 
-export const unleash = initialize({
-    url: 'https://feature-gacha.litdevs.org/api',
-    appName: 'jumpsca.re-api',
-    environment: ejson.environment === "dev" ? "development" : "production",
-    // @ts-ignore
-    customHeaders: { Authorization: process.env.UNLEASH_TOKEN },
-});
-
 // Set up body parsers
 // Stripe webhook needs raw body, so we need to use raw body parser for that
 app.use((req, res, next) => {
@@ -71,10 +61,6 @@ app.use((req, res, next) => {
     res.reply = (reply : Reply) => {
         res.status(reply.request.status_code).json(reply);
     }
-
-    res.locals.unleashContext = {
-        remoteAddress: req.headers["x-forwarded-for"] || req.ip,
-    };
 
     // Continue
     next();
@@ -134,7 +120,6 @@ app.all("*", async (req, res) => {
 })
 
 // Make sure both databases and feature gacha are ready before starting listening for requests
-let unleashReady = false;
 let databaseReady = false;
 let wcDatabaseReady = false;
 
@@ -148,14 +133,8 @@ database.events.once("ready", () => {
     startServer();
 });
 
-unleash.on('synchronized', () => {
-    console.debug("Feature gacha rolled")
-    unleashReady = true;
-    startServer();
-});
-
 const startServer = () => {
-    if (!databaseReady || !wcDatabaseReady || !unleashReady) return;
+    if (!databaseReady || !wcDatabaseReady) return;
     app.listen(process.env.PORT || 18665, async () => {
         console.log(`${await database.Address.countDocuments({})} address documents in Runestone`)
         console.log(`Listening on port ${process.env.PORT || 18665}`);
