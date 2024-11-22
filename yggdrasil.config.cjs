@@ -18,7 +18,7 @@ module.exports = {
 	deploy : {
 		phoenix : {
 			"user" : "jumpscare",
-			"host" : ["kirito.yggdrasil.cat"],
+			"host" : ["kirito.asgard.yggdrasil.cat"],
 			"ref"  : "origin/phoenix",
 			"repo" : "git@github.com:LITdevs/jumpsca.re-api.git",
 			"path" : "/home/jumpscare/phoenix",
@@ -26,7 +26,7 @@ module.exports = {
 		},
 		production : {
 			"user" : "jumpscare",
-			"host" : ["kirito.yggdrasil.cat"],
+			"host" : ["kirito.asgard.yggdrasil.cat"],
 			"ref"  : "origin/prod",
 			"repo" : "git@github.com:LITdevs/jumpsca.re-api.git",
 			"path" : "/home/jumpscare/production",

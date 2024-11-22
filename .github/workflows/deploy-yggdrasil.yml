@@ -11,13 +11,17 @@ permissions:
 
 jobs:
   build:
-
-    runs-on: self-hosted
-
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: [18.x]
     steps:
+      - name: Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:jumpscare-ci
       - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
