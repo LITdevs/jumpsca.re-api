@@ -30,15 +30,22 @@ jobs:
           cache: 'npm'
       - run: yarn install
       - name: ssh-keyscan 10.1.3.1
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         run: |
           mkdir -p ~/.ssh/
           echo "$KIRITO_SSH_KEY" > ~/.ssh/id_rsa
           sudo chmod 600 ~/.ssh/id_rsa
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null
           ssh-add
           ssh-keyscan -H 10.1.3.1 > ~/.ssh/known_hosts
       - run: npx pm2 deploy yggdrasil.config.cjs phoenix
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         if: github.ref_name == 'phoenix'
       - run: npx pm2 deploy yggdrasil.config.cjs production
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         if: github.ref_name == 'prod'
       - name: Create commit comment
         uses: peter-evans/commit-comment@v2
