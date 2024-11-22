@@ -30,6 +30,7 @@ jobs:
           cache: 'npm'
       - run: yarn install
       - run: yarn add global pm2
+      - run: export PATH="$(yarn global bin):$PATH"
       - run: pm2 deploy yggdrasil.config.cjs phoenix
         if: github.ref_name == 'phoenix'
       - run: pm2 deploy yggdrasil.config.cjs production
