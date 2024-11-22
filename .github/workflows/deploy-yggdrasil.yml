@@ -29,7 +29,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: yarn install
-      - name: ssh-keyscan 10.1.3.1
+      - name: Set up SSH
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         run: |

@@ -2937,16 +2937,6 @@ universalify@^0.1.0:
   resolved "https://registry.yarnpkg.com/universalify/-/universalify-0.1.2.tgz#b646f69be3942dabcecc9d6639c80dc105efaa66"
   integrity sha512-rBJeI5CXAlmy1pV+617WB9J63U6XcazHHF2f2dbJix4XzpUF0RS3Zbj0FGIOCAva5P/d/GBOYaACQ1w+0azUkg==
 
-unleash-client@^4.0.1:
-  version "4.0.1"
-  resolved "https://registry.yarnpkg.com/unleash-client/-/unleash-client-4.0.1.tgz#c1883b77393b0228ba225a0eb6fbd3b42bc9b1be"
-  integrity sha512-yhXfwbxPcy4Tel2jnhhxKCLorVD3E30YT5LEyr0EVhUJ9XwAfRUcI7P/DJ6SDEeGM1dUpfzy9BssWIYQgP5rcg==
-  dependencies:
-    ip "^1.1.8"
-    make-fetch-happen "^11.1.1"
-    murmurhash3js "^3.0.1"
-    semver "^7.5.2"
-
 unpipe@1.0.0, unpipe@~1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/unpipe/-/unpipe-1.0.0.tgz#b2bf4ee8514aae6165b4817829d21b2ef49904ec"
