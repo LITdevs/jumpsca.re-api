@@ -18,7 +18,6 @@ import {
     priorityRequiredRecordTypes,
     supportedRecordTypes
 } from "../../util/DNS.js";
-import FeatureFlag from "../../util/middleware/FeatureFlagMiddleware.js";
 import ForbiddenReply from "../../classes/Reply/ForbiddenReply.js";
 
 const router = express.Router();
@@ -405,7 +404,7 @@ router.post("/renew/:address", Auth, RequiredProperties([
     }
 })
 
-router.get("/dns/:address", FeatureFlag("JU-API-DNS-Read"), Auth, async (req, res) => {
+router.get("/dns/:address", Auth, async (req, res) => {
     req.params.address = tr46.toASCII(req.params.address.trim().toLowerCase(), { processingOption: "transitional" })
     if (!req.params.address) return res.reply(new BadRequestReply("Invalid address"));
     let address = await database.Address.findOne({name: req.params.address, owner: req.user._id});
@@ -423,7 +422,7 @@ router.get("/dns/:address", FeatureFlag("JU-API-DNS-Read"), Auth, async (req, re
     }))
 })
 
-router.post("/dns/:address", FeatureFlag("JU-API-DNS-Edit"), RequiredProperties([
+router.post("/dns/:address", RequiredProperties([
     {
         property: "name",
         type: "string",

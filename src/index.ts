@@ -4,7 +4,6 @@ import express from 'express';
 import fs from "fs";
 import NotFoundReply from "./classes/Reply/NotFoundReply.js";
 import Database from "./db.js";
-import FeatureFlag from "./util/middleware/FeatureFlagMiddleware.js";
 import Reply from "./classes/Reply/Reply.js";
 import Stripe from "stripe";
 import Cloudflare from "cloudflare";
@@ -66,7 +65,6 @@ app.use((req, res, next) => {
     next();
 })
 
-app.use(FeatureFlag("JU-API-killswitch"))
 
 // Set up locals
 app.locals.pjson = pjson;
