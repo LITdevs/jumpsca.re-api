@@ -2,6 +2,7 @@ import express from 'express';
 import Database from "../../db.js";
 import NotFoundReply from "../../classes/Reply/NotFoundReply.js";
 import axios from "axios";
+import Reply from "../../classes/Reply/Reply.js";
 
 const router = express.Router();
 
@@ -25,5 +26,12 @@ router.post('/webhook/:siteId', async (req, res) => {
     console.log(response.data)
     res.sendStatus(200)
 });
+
+// v1/site/tls-check
+router.get("/tls-check", async (req, res) => {
+    let site = await database.Site.findOne({ "deployConfig.domains": req.query.domain })
+    if (!site) return res.status(400).json({success: false})
+    res.status(200).json({success: true})
+})
 
 export default router;
