@@ -14,5 +14,10 @@ router.get("/", async (req, res) => {
         }}));
 })
 
+router.get("/ip", (req, res) => {
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    res.json({ ip });
+})
+
 
 export default router;
