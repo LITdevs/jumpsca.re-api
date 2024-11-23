@@ -16,6 +16,7 @@ router.post('/webhook/:siteId', async (req, res) => {
         domains: site.deployConfig.domains,
         repoUrl: req.body.repository.url,
         serveFolder: site.deployConfig.serveFolder,
+        environment: site.deployConfig.environment,
         buildCommand: site.deployConfig.buildCommand
     }), {
         headers: {

@@ -7,6 +7,7 @@ const schema : mongoose.Schema = new mongoose.Schema({
     deployConfig: {
         serveFolder: String,
         buildCommand: String,
+        environment: Object,
         domains: Array
     }
 });
