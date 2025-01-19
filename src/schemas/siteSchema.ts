@@ -9,7 +9,9 @@ const schema : mongoose.Schema = new mongoose.Schema({
         serveFolder: String,
         buildCommand: String,
         environment: Object,
-        domains: Array
+        domains: Array,
+        headers: Object,
+        redirects: Array
     }
 });
 
