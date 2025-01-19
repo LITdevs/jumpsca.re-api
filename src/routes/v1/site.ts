@@ -20,7 +20,8 @@ router.post('/webhook/:siteId', async (req, res) => {
         environment: site.deployConfig.environment,
         buildCommand: site.deployConfig.buildCommand,
         headers: site.deployConfig.headers,
-        redirects: site.deployConfig.redirects
+        redirects: site.deployConfig.redirects,
+        spa: site.deployConfig.spa
     }), {
         headers: {
             "Content-Type": "application/json",

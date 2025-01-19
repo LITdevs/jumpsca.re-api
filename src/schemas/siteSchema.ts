@@ -11,7 +11,8 @@ const schema : mongoose.Schema = new mongoose.Schema({
         environment: Object,
         domains: Array,
         headers: Object,
-        redirects: Array
+        redirects: Array,
+        spa: Boolean
     }
 });
 
